@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contributing | Terac Cookbook</title>
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<!-- source: CONTRIBUTING.md; source-sha256: b5d0b2998d9ff359948ba9c8aeb34c4f5415dde87835d4de2ceeecf26d5d8dc5 -->
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="index.html">Terac Cookbook</a>
+    <nav class="site-nav" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="recipes/index.html">Recipes</a>
+        <a href="contributing.html" aria-current="page">Contributing</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="page-shell">
+  <div class="page-layout">
+    <article>
+      <header class="page-header">
+        <p class="eyebrow">Cookbook 0.1.0</p>
+        <h1 id="contributing">Contributing</h1>
+        <p class="lead">Help make agent–expert workflows easy to run, inspect and understand. A useful
+contribution can be a clearer example, a bug fix, or a small new Recipe with an
+offline demonstration.</p>
+      </header>
+      <div class="content">
+<h2 id="from-idea-to-pull-request">From idea to pull request</h2>
+<ol>
+<li><strong>Describe the job.</strong> Open a recipe proposal issue for a new workflow. State
+   the input, useful output, caller actions, waiting and failure cases. Explain
+   how to demonstrate it with synthetic data and which effects live use would
+   require. The YAML issue form collects a proposal; it is not an executable
+   recipe format.</li>
+<li><strong>Agree the contract.</strong> Settle the caller interface and observable acceptance
+   with a maintainer before adding runtime behavior. Keep domain meaning in the
+   recipe, lifecycle in the runner and transport in adapters.</li>
+<li><strong>Make one focused change.</strong> Branch from the current <code>main</code>. Add source,
+   synthetic fixtures, public-interface tests and the documentation needed to
+   run the example. Document any explicit entrypoint registration changes.</li>
+<li><strong>Check and explain it.</strong> Run the offline checks below. Open a pull request
+   explaining the resulting behavior, test evidence, fixture provenance and
+   any simulated or unverified parts. Resolve review findings before merge.</li>
+</ol>
+<p>If you have repository write access, push your feature branch to this repository.
+Otherwise use a fork where the repository's visibility and permissions allow it,
+or ask a maintainer for a contribution route. Pull requests target <code>main</code>.</p>
+<h2 id="set-up-a-checkout">Set up a checkout</h2>
+<p>Requires Python 3.11 or later, Git and <a href="https://docs.astral.sh/uv/">uv</a>.</p>
+<pre><code class="language-sh">git clone https://github.com/TeracAI/terac-cookbook.git
+cd terac-cookbook
+git switch -c recipe/your-example
+uv sync --locked
+</code></pre>
+<p>Run the <a href="recipes/oracle.html#run-the-default-case">Oracle walkthrough</a> to see
+the existing caller contract. Keep local checkpoints in ignored <code>.tmp/</code> or a
+private directory outside the checkout.</p>
+<h2 id="build-a-recipe">Build a Recipe</h2>
+<p>Each implemented Recipe lives under <code>recipes/&lt;recipe-id&gt;/</code>. Its short README
+points to one canonical guide and any detailed domain contract. Include:</p>
+<ul>
+<li>A concrete job, input, output and exact artifact/scope binding.</li>
+<li>Observable waiting, inspection, clarification, completion and failure behavior.</li>
+<li>A default replay with synthetic or explicitly cleared fixtures.</li>
+<li>Permitted effects, required authority and unavailable live behavior.</li>
+<li>Public-interface tests and an invocation from a clean installation.</li>
+</ul>
+<p>Python defines execution. New recipes require explicit source registration at
+the entrypoints they expose. A directory, descriptor or issue does not install
+new runtime behavior. Use a second working example to justify shared abstractions.</p>
+<p>See the <a href="architecture.html">architecture</a> and
+<a href="../recipes/oracle/review-contract.md">Oracle feedback contract</a> for the existing
+boundaries. Extend those contracts only where the new behavior needs it.</p>
+<h2 id="test-the-callers-workflow">Test the caller's workflow</h2>
+<p>Prefer focused end-to-end checks through the same Python or CLI interface a
+caller uses. Cover the successful path and the failures that could change a
+caller's decision: invalid input, paused work, read-only inspection, restart,
+wrong artifact/scope, linked work and incompatible checkpoints where applicable.</p>
+<p>Use fake providers and synthetic holdouts. Local tests and contribution CI must
+run without live credentials, expert work or provider effects. Test observable
+results and state preservation rather than copying private implementation logic
+into assertions. Verify packaged fixtures and entrypoints from a built wheel
+outside the source checkout when they change.</p>
+<h2 id="run-offline-checks">Run offline checks</h2>
+<pre><code class="language-sh">uv run --no-sync python scripts/check_docs.py
+uv run --no-sync python scripts/render_docs.py --check
+uv run --no-sync python -m pytest -q
+uv run --no-sync ruff check .
+uv run --no-sync ruff format --check .
+uv build
+git diff --check
+</code></pre>
+<p>If you edit canonical Markdown, regenerate its HTML with
+<code>uv run --no-sync python scripts/render_docs.py</code> before checking it. Markdown
+owns the prose; generated HTML is its offline reading view. Inspect changed pages
+and diagrams visually, and review links and local assets.</p>
+<h2 id="data-authority-and-review">Data, authority and review</h2>
+<p>Do not submit credentials, expert identities, private briefs, raw checkpoints or
+confidential provider responses. Synthetic fixtures must be labeled. Recorded
+material needs rights and privacy clearance for the exact version and intended
+audience before it can be committed or published. Describe provenance without
+including private clearance records.</p>
+<p>Replay remains the default even when credentials exist. Expert advice cannot
+authorize disclosure, recruitment, spend, follow-up, payment, rejection or
+publication. A changed brief has no inherited recommendation.</p>
+<p>Request review from someone who did not author the change. Review should check
+the agreed behavior, repository invariants, fixture provenance and evidence from
+the final revision. Passing CI establishes the checks that ran; required checks,
+review rules and merge permissions are separate repository settings. Review and
+local acceptance do not establish live-provider conformance.</p>
+      </div>
+    </article>
+    <nav class="toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+<div>
+<ul>
+<li><a href="#from-idea-to-pull-request">From idea to pull request</a></li>
+<li><a href="#set-up-a-checkout">Set up a checkout</a></li>
+<li><a href="#build-a-recipe">Build a Recipe</a></li>
+<li><a href="#test-the-callers-workflow">Test the caller's workflow</a></li>
+<li><a href="#run-offline-checks">Run offline checks</a></li>
+<li><a href="#data-authority-and-review">Data, authority and review</a></li>
+</ul>
+</div>
+    </nav>
+  </div>
+</main>
+<footer class="site-footer">
+  <p>Terac Cookbook 0.1.0 · Local, offline reading view.</p>
+  <p class="source-note">Markdown is canonical. <a href="../CONTRIBUTING.md">Read the source</a>.</p>
+</footer>
+</body>
+</html>

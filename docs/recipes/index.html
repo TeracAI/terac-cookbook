@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recipes | Terac Cookbook</title>
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<!-- source: docs/recipes/index.md; source-sha256: fc227c0bc2d31c91bf02ba90d4c9bb7ee08a114f1a586e224c4966f783069437 -->
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="../index.html">Terac Cookbook</a>
+    <nav class="site-nav" aria-label="Main navigation">
+        <a href="../index.html">Home</a>
+        <a href="../architecture.html">Architecture</a>
+        <a href="index.html" aria-current="page">Recipes</a>
+        <a href="../contributing.html">Contributing</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="page-shell">
+  <div class="page-layout">
+    <article>
+      <header class="page-header">
+        <p class="eyebrow">Cookbook 0.1.0</p>
+        <h1 id="recipes">Recipes</h1>
+        <p class="lead">A Recipe is a runnable agent–expert workflow with understandable input, output,
+permitted effects and replay data. The catalog currently contains one implemented
+Recipe.</p>
+      </header>
+      <div class="content">
+<h2 id="oracle">Oracle</h2>
+<p><strong>Review a go-to-market brief.</strong> Oracle returns scoped feedback on buyer and pain,
+willingness to pay, and channel fit. The calling agent decides how to use it.</p>
+<ul>
+<li><strong>Identifier:</strong> <code>oracle</code></li>
+<li><strong>Available mode:</strong> synthetic offline replay</li>
+<li><strong>Callers:</strong> Python and <code>terac-oracle</code></li>
+<li><strong>Input:</strong> a concise brief with its claims and evidence</li>
+<li><strong>Output:</strong> exact-brief feedback, including a recommendation and its limitations</li>
+<li><strong>Cases:</strong> <code>pass_with_comments</code>, <code>fail</code>, and default <code>inconclusive</code></li>
+</ul>
+<p><a href="oracle.html">Run Oracle</a> · <a href="../../recipes/oracle/review-contract.md">Read its feedback contract</a></p>
+<p>The three cases demonstrate workflow behavior. They do not evaluate arbitrary
+briefs, adapt to clarification answers or establish live expert judgment.</p>
+<h2 id="add-a-useful-example">Add a useful example</h2>
+<p>Start with a developer's concrete input and desired output. Define the caller
+contract, waiting behavior, permitted effects and failures. Provide synthetic
+replay before optional live integration.</p>
+<p>An accepted proposal becomes a small Python implementation, focused tests,
+documented entrypoints and clear provenance. New Recipes require explicit source
+registration; adding YAML does not create executable behavior. Follow the
+<a href="../contributing.html">contribution flow</a>.</p>
+      </div>
+    </article>
+    <nav class="toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+<div>
+<ul>
+<li><a href="#oracle">Oracle</a></li>
+<li><a href="#add-a-useful-example">Add a useful example</a></li>
+</ul>
+</div>
+    </nav>
+  </div>
+</main>
+<footer class="site-footer">
+  <p>Terac Cookbook 0.1.0 · Local, offline reading view.</p>
+  <p class="source-note">Markdown is canonical. <a href="index.md">Read the source</a>.</p>
+</footer>
+</body>
+</html>
