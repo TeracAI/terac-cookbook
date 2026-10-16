@@ -33,7 +33,7 @@ Requires Python 3.11 or later, Git and [uv](https://docs.astral.sh/uv/).
 git clone https://github.com/TeracAI/terac-cookbook.git
 cd terac-cookbook
 git switch -c recipe/your-example
-uv sync --locked
+uv sync --locked --extra connectors
 ```
 
 Run the [Oracle walkthrough](docs/recipes/oracle.md#run-the-default-case) to see

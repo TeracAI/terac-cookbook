@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/architecture.md; source-sha256: cf31a31c2aa39f9a49a151299b5648d886d91cd946eabe3bda69a96e62cda512 -->
+<!-- source: docs/architecture.md; source-sha256: ec7c695677a5f92b8e25b968fe54c9eeb8f816e0d23519fac6e918b6f65eff15 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -17,6 +17,7 @@
         <a href="architecture.html" aria-current="page">Architecture</a>
         <a href="recipes/index.html">Recipes</a>
         <a href="contributing.html">Contributing</a>
+        <a href="terac-access.html">Terac access</a>
     </nav>
   </div>
 </header>
@@ -24,7 +25,7 @@
   <div class="page-layout">
     <article>
       <header class="page-header">
-        <p class="eyebrow">Cookbook 0.1.0</p>
+        <p class="eyebrow">Cookbook 0.2.0.dev0</p>
         <h1 id="architecture">Architecture</h1>
         <p class="lead">A Recipe defines the job. The runner makes its progress inspectable. Adapters
 supply events without taking over the Recipe's meaning.</p>
@@ -141,6 +142,12 @@ review. Reconcile an uncertain submission before retrying effects.</p>
 <p>Disclosure, recruitment, spend, follow-up, payment, rejection and publication each
 require declared authority. Replay fixtures and published responses also need
 rights and privacy clearance for their exact version and audience.</p>
+<h2 id="read-only-context-is-a-separate-diagnostic">Read-only context is a separate diagnostic</h2>
+<p>The optional Python context reader performs one bounded REST read and discards
+provider values after shape validation. Windows operator scripts own encrypted
+local key storage and a narrow context/catalog probe. Neither is an Oracle live
+runner adapter: no provider task IDs, expert request, substantive delivery or
+continuation are introduced. See <a href="terac-access.html">Terac access</a>.</p>
 <h2 id="extend-the-smallest-useful-seam">Extend the smallest useful seam</h2>
 <p>Agree the new Recipe's inputs, outputs, permitted effects and failure cases
 before runtime code. Demonstrate them through the caller interface with fake
@@ -160,6 +167,7 @@ concrete workflow and acceptance evidence.</p>
 <li><a href="#state-is-different-from-a-recommendation">State is different from a recommendation</a></li>
 <li><a href="#replay-restart-and-compatibility">Replay, restart and compatibility</a></li>
 <li><a href="#transport-and-provider-boundaries">Transport and provider boundaries</a></li>
+<li><a href="#read-only-context-is-a-separate-diagnostic">Read-only context is a separate diagnostic</a></li>
 <li><a href="#extend-the-smallest-useful-seam">Extend the smallest useful seam</a></li>
 </ul>
 </div>
@@ -167,7 +175,7 @@ concrete workflow and acceptance evidence.</p>
   </div>
 </main>
 <footer class="site-footer">
-  <p>Terac Cookbook 0.1.0 · Local, offline reading view.</p>
+  <p>Terac Cookbook 0.2.0.dev0 · Local, offline reading view.</p>
   <p class="source-note">Markdown is canonical. <a href="architecture.md">Read the source</a>.</p>
 </footer>
 </body>

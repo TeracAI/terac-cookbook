@@ -26,7 +26,7 @@ jobs:
       - name: Install environment tool
         run: python -m pip install uv==0.11.7
       - name: Install locked development environment
-        run: uv sync --locked --python ${{ matrix.python }}
+        run: uv sync --locked --extra connectors --python ${{ matrix.python }}
       - name: Check documentation and credential patterns
         run: uv run --no-sync python scripts/check_docs.py
       - name: Check generated documentation
@@ -42,3 +42,17 @@ jobs:
       - name: Exercise installed wheel outside checkout
         shell: bash
         run: uv run --no-sync python scripts/smoke_wheel.py --wheel dist/*.whl
+
+  windows-credentials:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install environment tool
+        run: python -m pip install uv==0.11.7
+      - name: Install locked development environment
+        run: uv sync --locked --python 3.12
+      - name: Test synthetic credential storage and captured CLI output
+        run: uv run --no-sync python -m pytest -q scripts/tests tests/test_oracle.py::test_captured_cli_preserves_unicode_through_all_actions

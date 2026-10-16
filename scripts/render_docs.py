@@ -297,8 +297,10 @@ def render_page(root, source, output, mapping, version):
         ("Recipes", "docs/recipes/index.html"),
         ("Contributing", "docs/contributing.html"),
     ]
-    if OPTIONAL_PAGE[0] in mapping:
-        navigation.append(("MCP", OPTIONAL_PAGE[1]))
+    if "docs/mcp.md" in mapping:
+        navigation.append(("MCP", mapping["docs/mcp.md"]))
+    if "docs/terac-access.md" in mapping:
+        navigation.append(("Terac access", mapping["docs/terac-access.md"]))
     nav = "\n".join(
         f'        <a href="{relative_url(root / target, root / output.parent)}"'
         + (' aria-current="page"' if target == output.as_posix() else "")
@@ -364,8 +366,9 @@ def main():
     root = arguments.root.resolve()
     try:
         mapping = dict(PAGES)
-        if (root / OPTIONAL_PAGE[0]).is_file():
-            mapping[OPTIONAL_PAGE[0]] = OPTIONAL_PAGE[1]
+        for source, output in OPTIONAL_PAGES.items():
+            if (root / source).is_file():
+                mapping[source] = output
         for name in [*mapping, "pyproject.toml", "docs/assets/site.css"]:
             if not (root / name).is_file():
                 raise ValueError(f"missing required source or asset: {name}")

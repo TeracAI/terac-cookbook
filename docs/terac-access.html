@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Read-only Terac access | Terac Cookbook</title>
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<!-- source: docs/terac-access.md; source-sha256: 7f1a1e640d5f6a42c5d7f9ab37bb916a83049b5eb08f4b7ddb013a67ffb01e85 -->
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="index.html">Terac Cookbook</a>
+    <nav class="site-nav" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="recipes/index.html">Recipes</a>
+        <a href="contributing.html">Contributing</a>
+        <a href="terac-access.html" aria-current="page">Terac access</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="page-shell">
+  <div class="page-layout">
+    <article>
+      <header class="page-header">
+        <p class="eyebrow">Cookbook 0.2.0.dev0</p>
+        <h1 id="read-only-terac-access">Read-only Terac access</h1>
+        <p class="lead">These diagnostics check a connection and response shape. They do not submit a
+brief, recruit or pay an expert, approve labor, or enable Oracle live mode.
+Oracle remains replay by default, including when a key is present.</p>
+      </header>
+      <div class="content">
+<h2 id="choose-the-access-path">Choose the access path</h2>
+<p>The Windows operator scripts keep an API key encrypted for the current Windows
+account outside the checkout. The Python reader accepts a credential supplied
+by the embedding application and returns sanitized context facts. These are
+separate entrypoints; Python does not read the scripts' credential store.</p>
+<p>API-key access and browser OAuth are different flows. These scripts do not
+configure Terac's ChatGPT/Claude connector or verify browser OAuth.</p>
+<h2 id="windows-terminal-setup">Windows terminal setup</h2>
+<p>From a trusted local checkout, run the following yourself. The prompt hides input;
+never put a key into an argument, issue, chat, test fixture or committed <code>.env</code>.</p>
+<pre><code class="language-powershell">powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup_terac_credentials.ps1
+</code></pre>
+<p>To replace an existing key, explicitly opt in before the hidden prompt:</p>
+<pre><code class="language-powershell">powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup_terac_credentials.ps1 -Replace
+</code></pre>
+<p>The store uses Windows CurrentUser DPAPI and restrictive user permissions under
+<code>%LOCALAPPDATA%\TeracCookbook</code>. It rejects unsafe storage paths and permissions.
+It does not validate a key by calling Terac. This is Windows-specific local
+storage; it is not a portable secret manager or protection against a compromised
+process already running as that user.</p>
+<h2 id="explicit-operator-probe">Explicit operator probe</h2>
+<p>The following command uses the stored key and performs authenticated reads. Run
+it only for an account/organization you are authorized to inspect:</p>
+<pre><code class="language-powershell">powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\probe_terac_access.ps1
+</code></pre>
+<p>It requests the fixed REST organization-context endpoint, initializes hosted
+Terac MCP with the supported <code>2025-11-25</code> protocol and lists tools. The diagnostic
+requires the server to advertise its tools capability; a server without it is
+outside this probe's supported scope. It may call
+only the allowlisted <code>terac_get_context</code> tool after its input-schema check passes.
+It does not invoke other discovered tools or any expert workflow.</p>
+<p>Output contains status and shape facts, not the key, organization values,
+balances, tool responses or raw provider errors. Invalid supported response
+shapes keep facts unknown and produce a sanitized phase error. This is a narrow
+diagnostic for supported fields, not a general MCP conformance validator.
+Unsupported negotiation or context schemas stop that path; REST and MCP results
+remain separate. Passing a diagnostic does not establish administrator rights,
+write permissions, delivered expert feedback or same-expert follow-up support.</p>
+<p>The PowerShell REST <code>response_shape_valid</code> field means a JSON object was parsed;
+its remaining fields describe property presence. It does not validate the full
+six-field context schema used by the Python reader below. Unsupported blank MCP
+pagination cursors stop discovery with an incomplete catalog and a safe error.</p>
+<h2 id="python-context-reader">Python context reader</h2>
+<p>Install the connector dependencies from the reviewed revision:</p>
+<pre><code class="language-sh">uv sync --locked --extra connectors
+</code></pre>
+<p>An embedding application can call <code>adapters.terac_context.read_context</code> with its
+in-memory bearer token. Supply credentials through the application's trusted
+secret mechanism; there is no key-bearing command-line option.
+Invalid credentials, including non-ASCII or whitespace/control characters, fail
+locally with a generic input error before any request.</p>
+<p>The reader sends one fixed
+<code>GET https://terac.com/api/external/v2/organizations/current/context</code>, with no
+request body, query, redirect following, retry, pagination or dashboard-link fetch.
+It supports identity, gzip and deflate response encodings, with bounded decoding.
+Other encodings fail explicitly. Its local limits are a 20-second network-operation
+timeout and 1 MiB of decoded response data. These limits do not state a Terac
+service guarantee or a whole-workflow wall-clock deadline.</p>
+<p>A successful response must contain <code>markdown</code>, <code>organizationId</code>,
+<code>organizationName</code>, <code>organizationSlug</code>, finite numeric <code>balanceDollars</code>, and
+<code>dashboard</code>. Dashboard requires strings <code>home</code>, <code>opportunities</code>, <code>drafts</code>,
+<code>feasibility</code>, <code>finance</code> and <code>api_keys</code>. Null/wrong-type required fields are
+rejected; unrecognized fields are discarded. The returned <code>ContextObservation</code>
+contains status and presence facts only, never those values.</p>
+<p><code>ContextReadError</code> exposes a safe error code and HTTP status when known, including
+after a response body-stream failure. A positive decimal <code>Retry-After</code> of up to
+ten digits may be reported, without waiting or retrying. Authentication,
+permission, status, timeout, transport, size, JSON
+and schema errors stay distinct. See the
+<a href="https://terac.com/docs/developers/reference/getOrganizationContext">published operation</a>
+for provider documentation; the local reader's schema support is deliberately
+bounded to its reviewed contract.</p>
+<h2 id="tests-and-remaining-live-work">Tests and remaining live work</h2>
+<p>The default test suite uses fake HTTP transport and synthetic secrets. Windows
+credential tests use isolated temporary stores. CI does not read an operator's
+store or call Terac. The supported public seam is tested for fixed requests,
+response budgets, malformed data and sanitized failures.</p>
+<p>This increment does not connect an Oracle run to Terac expert work. That needs a
+verified request/report linkage, substantive feedback retrieval, continuation and
+recontact semantics, explicit disclosure/spend authority and uncertain-write
+reconciliation. Recorded responses also need rights/privacy clearance before
+they can become replay fixtures. See <a href="architecture.html">architecture</a> for how
+transport and Recipe responsibilities remain separate.</p>
+      </div>
+    </article>
+    <nav class="toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+<div>
+<ul>
+<li><a href="#choose-the-access-path">Choose the access path</a></li>
+<li><a href="#windows-terminal-setup">Windows terminal setup</a></li>
+<li><a href="#explicit-operator-probe">Explicit operator probe</a></li>
+<li><a href="#python-context-reader">Python context reader</a></li>
+<li><a href="#tests-and-remaining-live-work">Tests and remaining live work</a></li>
+</ul>
+</div>
+    </nav>
+  </div>
+</main>
+<footer class="site-footer">
+  <p>Terac Cookbook 0.2.0.dev0 · Local, offline reading view.</p>
+  <p class="source-note">Markdown is canonical. <a href="terac-access.md">Read the source</a>.</p>
+</footer>
+</body>
+</html>

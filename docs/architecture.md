@@ -91,6 +91,14 @@ Disclosure, recruitment, spend, follow-up, payment, rejection and publication ea
 require declared authority. Replay fixtures and published responses also need
 rights and privacy clearance for their exact version and audience.
 
+## Read-only context is a separate diagnostic
+
+The optional Python context reader performs one bounded REST read and discards
+provider values after shape validation. Windows operator scripts own encrypted
+local key storage and a narrow context/catalog probe. Neither is an Oracle live
+runner adapter: no provider task IDs, expert request, substantive delivery or
+continuation are introduced. See [Terac access](terac-access.md).
+
 ## Extend the smallest useful seam
 
 Agree the new Recipe's inputs, outputs, permitted effects and failure cases
