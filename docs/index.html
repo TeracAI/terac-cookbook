@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Terac Cookbook | Terac Cookbook</title>
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<!-- source: docs/index.md; source-sha256: b63b4368beb88ec0d99c46f3130d73195d94f3fa1212eaf4b23bbdc5c1e3e021 -->
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="index.html">Terac Cookbook</a>
+    <nav class="site-nav" aria-label="Main navigation">
+        <a href="index.html" aria-current="page">Home</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="recipes/index.html">Recipes</a>
+        <a href="contributing.html">Contributing</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="page-shell">
+  <div class="page-layout">
+    <article>
+      <header class="page-header">
+        <p class="eyebrow">Cookbook 0.1.0</p>
+        <h1 id="terac-cookbook">Terac Cookbook</h1>
+        <p class="lead"><strong>Build a workflow you can inspect.</strong> Terac Cookbook shows how an agent can request
+expert feedback, wait for delivery, and decide how to use the result.</p>
+      </header>
+      <div class="content">
+<p>Start with <strong>Oracle</strong>, a review of a go-to-market brief. Run its synthetic replay
+locally to understand the complete workflow without an account or expert spend.</p>
+<h2 id="choose-a-starting-point">Choose a starting point</h2>
+<ul>
+<li><strong>Run the example:</strong> <a href="recipes/oracle.html">Oracle</a> walks through waiting,
+  clarification, feedback and linked work.</li>
+<li><strong>Understand the design:</strong> <a href="architecture.html">Architecture</a> explains how recipes,
+  the runner, replay and checkpoints fit together.</li>
+<li><strong>Browse the catalog:</strong> <a href="recipes/index.html">Recipes</a> lists implemented examples
+  and their available modes.</li>
+<li><strong>Add or improve an example:</strong> <a href="contributing.html">Contributing</a> takes one
+  proposal through source, offline checks and review.</li>
+</ul>
+<h2 id="what-this-baseline-delivers">What this baseline delivers</h2>
+<p>Oracle has four caller actions: <code>start</code>, <code>inspect</code>, <code>respond</code> and <code>resume</code>.
+Three synthetic cases demonstrate pass with comments, fail and inconclusive
+feedback. Saved local state supports inspection and deliberate resumption after
+a caller exits. Linked work starts a fresh run while preserving earlier feedback.</p>
+<p>The agent owns the next decision: explain the result, revise the brief, continue
+the task or request more scoped work. Delivery does not require an automatic
+rewrite. A new brief has no inherited verdict.</p>
+<h2 id="read-the-boundaries">Read the boundaries</h2>
+<p>This baseline provides Python and CLI replay; live expert fulfillment is
+unavailable. Replay timing and content are scripted. They demonstrate software
+behavior, not real expert judgment or market validation.</p>
+<p>Checkpoints are plaintext JSON for one process at a time. There are no background
+wakeups, deadline handling or concurrent-writer guarantees. Keep caller data
+private and preserve the exact state directory when restarting.</p>
+<p>Markdown is canonical. The matching HTML pages and local SVG diagrams are
+generated for offline reading; they use no external assets or browser scripts.</p>
+      </div>
+    </article>
+    <nav class="toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+<div>
+<ul>
+<li><a href="#choose-a-starting-point">Choose a starting point</a></li>
+<li><a href="#what-this-baseline-delivers">What this baseline delivers</a></li>
+<li><a href="#read-the-boundaries">Read the boundaries</a></li>
+</ul>
+</div>
+    </nav>
+  </div>
+</main>
+<footer class="site-footer">
+  <p>Terac Cookbook 0.1.0 · Local, offline reading view.</p>
+  <p class="source-note">Markdown is canonical. <a href="index.md">Read the source</a>.</p>
+</footer>
+</body>
+</html>

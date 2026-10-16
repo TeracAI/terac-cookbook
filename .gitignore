@@ -1,0 +1,29 @@
+# Private build and validation output
+.tmp/
+.codex-finalizer/
+*.validation.json
+
+# Local environments and dependencies
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.py[cod]
+
+# Generated build output
+build/
+dist/
+coverage/
+.pytest_cache/
+.ruff_cache/
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*
+*.tmp
+*.log

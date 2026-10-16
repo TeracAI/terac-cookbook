@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture | Terac Cookbook</title>
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<!-- source: docs/architecture.md; source-sha256: cf31a31c2aa39f9a49a151299b5648d886d91cd946eabe3bda69a96e62cda512 -->
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="index.html">Terac Cookbook</a>
+    <nav class="site-nav" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="architecture.html" aria-current="page">Architecture</a>
+        <a href="recipes/index.html">Recipes</a>
+        <a href="contributing.html">Contributing</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="page-shell">
+  <div class="page-layout">
+    <article>
+      <header class="page-header">
+        <p class="eyebrow">Cookbook 0.1.0</p>
+        <h1 id="architecture">Architecture</h1>
+        <p class="lead">A Recipe defines the job. The runner makes its progress inspectable. Adapters
+supply events without taking over the Recipe's meaning.</p>
+      </header>
+      <div class="content">
+<p>Terac Cookbook is a local Python package. The offline baseline implements one
+Recipe, <a href="recipes/oracle.html">Oracle</a>, through Python and the <code>terac-oracle</code> CLI.
+Replay uses synthetic events without accounts, network calls or expert spend.</p>
+<p><img alt="A caller invokes a Recipe, which uses the runner, local checkpoints and replay. A future live provider adapter is a separate boundary." src="assets/cookbook-runner.svg"></p>
+<h2 id="keep-the-responsibilities-clear">Keep the responsibilities clear</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Owns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Calling agent</td>
+<td>Task context, presentation, revision and the next request</td>
+</tr>
+<tr>
+<td>Recipe</td>
+<td>Domain input/output meaning, exact artifact binding and result validation</td>
+</tr>
+<tr>
+<td>Runner</td>
+<td>Run identity, lifecycle and explicit progression</td>
+</tr>
+<tr>
+<td>Checkpoint storage</td>
+<td>Saved local state and validated reload</td>
+</tr>
+<tr>
+<td>Replay adapter</td>
+<td>Synthetic events and controlled scheduling</td>
+</tr>
+<tr>
+<td>Future provider adapter</td>
+<td>Authentication, transport, provider identities and verified work-content mapping</td>
+</tr>
+</tbody>
+</table>
+<p>The runner does not interpret GTM feedback. Oracle does not own transport or
+rewrite the brief. An adapter does not decide whether a review passes.</p>
+<p>New recipes are explicit Python implementations with documented entrypoints.
+There is no generic recipe dispatcher or YAML execution language in this baseline.
+A second working Recipe can justify additional shared behavior.</p>
+<h2 id="four-actions-explicit-progress">Four actions, explicit progress</h2>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Caller-visible behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>start</code></td>
+<td>Bind an exact input to a new run and save its initial waiting state</td>
+</tr>
+<tr>
+<td><code>inspect</code></td>
+<td>Read waiting, clarification, feedback or failure without advancing</td>
+</tr>
+<tr>
+<td><code>respond</code></td>
+<td>Save an answer to the current clarification without releasing another event</td>
+</tr>
+<tr>
+<td><code>resume</code></td>
+<td>Reattach and release at most one replay event; paused or terminal work returns saved state</td>
+</tr>
+</tbody>
+</table>
+<p>Linked work is another <code>start</code>, carrying <code>parent_id</code> and an explicit <code>follow_up</code>
+or <code>new_query</code> intent. It creates fresh work, preserves the parent and does not
+inherit the parent's recommendation. These are still four caller actions.</p>
+<p>The caller retains its run identifier and chooses when to reattach. Saving a
+checkpoint does not wake an agent or schedule a worker.</p>
+<h2 id="state-is-different-from-a-recommendation">State is different from a recommendation</h2>
+<p>Run status describes workflow delivery. Phase describes current work. The Recipe
+defines the meaning of its result.</p>
+<p>For Oracle, a <code>succeeded</code> run means validated feedback was delivered. That review
+can recommend <code>pass</code>, <code>fail</code> or <code>inconclusive</code>. Malformed feedback or a wrong
+artifact/scope binding causes workflow failure rather than becoming a review.</p>
+<p>Keep these facts separate: run completion, expert delivery, recommendation,
+caller revision, and provider labor/payment state. A changed artifact has no
+inherited verdict. Feedback grants no authority for further effects.</p>
+<h2 id="replay-restart-and-compatibility">Replay, restart and compatibility</h2>
+<p>Each run pins its replay case, checkpoint/recipe/fixture versions and a semantic
+fixture digest. A linked lineage validates each ancestor against its own pin.
+Whitespace and JSON object-key order do not change fixture identity; changed
+events, cases or versions do.</p>
+<p>Restart uses the same state directory and run identifier. Reload checks identity,
+scope, lifecycle, replay position and lineage before returning state. Legacy,
+unsupported or altered checkpoints return <code>checkpoint_incompatible</code> without
+rewriting or silently migrating saved bytes.</p>
+<p>Storage uses atomic replacement of local plaintext JSON and supports one process
+at a time. Concurrent writers, encryption, expiry, automatic retries, cancellation,
+deadlines and production recovery are outside the current guarantees.</p>
+<h2 id="transport-and-provider-boundaries">Transport and provider boundaries</h2>
+<p><strong>Inbound</strong> means a caller invokes Cookbook. <strong>Outbound</strong> means Cookbook invokes
+a provider such as Terac. These directions have distinct authentication and
+deployment responsibilities.</p>
+<p>The offline baseline exposes inbound Python and CLI calls, with replay as its
+only runner adapter. Live selection is rejected. Credentials alone never select
+live operation or establish content compatibility.</p>
+<p>A future live adapter needs an agreed caller contract and observed evidence for
+submission, progress, clarification, substantive delivery, errors and uncertain
+writes. A provider status or successful login does not establish a delivered
+review. Reconcile an uncertain submission before retrying effects.</p>
+<p>Disclosure, recruitment, spend, follow-up, payment, rejection and publication each
+require declared authority. Replay fixtures and published responses also need
+rights and privacy clearance for their exact version and audience.</p>
+<h2 id="extend-the-smallest-useful-seam">Extend the smallest useful seam</h2>
+<p>Agree the new Recipe's inputs, outputs, permitted effects and failure cases
+before runtime code. Demonstrate them through the caller interface with fake
+providers and synthetic fixtures. Include packaged assets and verify installation
+outside the checkout. See <a href="contributing.html">Contributing</a>.</p>
+<p>These boundaries support local, inspectable examples. Hosted execution, a shared
+database and generic orchestration are separate design decisions that need a
+concrete workflow and acceptance evidence.</p>
+      </div>
+    </article>
+    <nav class="toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+<div>
+<ul>
+<li><a href="#keep-the-responsibilities-clear">Keep the responsibilities clear</a></li>
+<li><a href="#four-actions-explicit-progress">Four actions, explicit progress</a></li>
+<li><a href="#state-is-different-from-a-recommendation">State is different from a recommendation</a></li>
+<li><a href="#replay-restart-and-compatibility">Replay, restart and compatibility</a></li>
+<li><a href="#transport-and-provider-boundaries">Transport and provider boundaries</a></li>
+<li><a href="#extend-the-smallest-useful-seam">Extend the smallest useful seam</a></li>
+</ul>
+</div>
+    </nav>
+  </div>
+</main>
+<footer class="site-footer">
+  <p>Terac Cookbook 0.1.0 · Local, offline reading view.</p>
+  <p class="source-note">Markdown is canonical. <a href="architecture.md">Read the source</a>.</p>
+</footer>
+</body>
+</html>

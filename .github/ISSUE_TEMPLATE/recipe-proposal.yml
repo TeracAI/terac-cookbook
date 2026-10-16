@@ -1,0 +1,49 @@
+name: Recipe example
+description: Suggest a runnable Terac Cookbook example
+title: "recipe: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe a small developer example. Use synthetic or cleared material.
+        Live use and publication need explicit authority.
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Developer use case
+      description: What input and output should the example demonstrate?
+    validations:
+      required: true
+  - type: textarea
+    id: replay
+    attributes:
+      label: Replay and setup
+      description: How could it run without credentials or expert spend?
+    validations:
+      required: true
+  - type: textarea
+    id: live
+    attributes:
+      label: Optional live requirements
+      description: Which provider interfaces, disclosed inputs and approved effects are needed?
+  - type: checkboxes
+    id: provenance
+    attributes:
+      label: Provenance
+      options:
+        - label: This issue contains no secrets, private data or unapproved source material.
+          required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Caller workflow and failure cases
+      description: Which actions, waiting/clarification, linked work and errors should callers observe?
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Acceptance and offline checks
+      description: Propose caller-interface tests and a replay command. Label unavailable live/client behavior.
+    validations:
+      required: true

@@ -1,0 +1,33 @@
+[project]
+name = "terac-cookbook"
+version = "0.1.0"
+description = "Runnable examples of agents working with expert feedback"
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.12,<3"]
+
+[project.scripts]
+terac-oracle = "recipes.oracle.__main__:main"
+
+[dependency-groups]
+dev = ["pytest>=8.4,<9", "ruff>=0.12,<1", "Markdown>=3.7,<4"]
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["runtime", "adapters", "recipes"]
+
+[tool.hatch.build.targets.sdist]
+include = ["runtime/", "adapters/", "recipes/", "pyproject.toml", "uv.lock", "README.md", "CONTRIBUTING.md", "docs/"]
+
+[tool.pytest.ini_options]
+testpaths = ["scripts/tests", "tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+include = ["*.py", "*.pyi", "*.ipynb"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Oracle | Terac Cookbook</title>
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<!-- source: docs/recipes/oracle.md; source-sha256: db80f27c0eb9615508d5ef411c3fcb286d1f198756c9a7975e6e5f9d879d7fe3 -->
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="../index.html">Terac Cookbook</a>
+    <nav class="site-nav" aria-label="Main navigation">
+        <a href="../index.html">Home</a>
+        <a href="../architecture.html">Architecture</a>
+        <a href="index.html">Recipes</a>
+        <a href="../contributing.html">Contributing</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="page-shell">
+  <div class="page-layout">
+    <article>
+      <header class="page-header">
+        <p class="eyebrow">Cookbook 0.1.0</p>
+        <h1 id="oracle">Oracle</h1>
+        <p class="lead"><strong>Turn a go-to-market brief into a clear next decision.</strong> Oracle returns scoped
+review feedback; the calling agent decides whether to explain it, revise the
+brief, continue the task or request linked work.</p>
+      </header>
+      <div class="content">
+<p>The implemented example is a fictional appointment tool for independent repair
+shops. Its replay is synthetic and scripted. It needs no account, network call
+or expert spend. Live expert fulfillment is unavailable.</p>
+<p><img alt="Oracle&#x27;s four actions move a saved run from waiting through optional clarification to feedback. The calling agent then chooses presentation, revision or fresh linked work." src="../assets/oracle-workflow.svg"></p>
+<h2 id="input-scope-and-result">Input, scope and result</h2>
+<p>Pass a nonempty brief to <code>start</code>. The fixed review scope is <strong>buyer and pain</strong>,
+<strong>willingness to pay</strong>, and <strong>channel fit</strong>. State which claims are supported,
+which remain hypotheses and what evidence is available.</p>
+<p>Every snapshot returns <code>run_id</code>, <code>parent_id</code>, <code>intent</code>, <code>artifact_id</code>, <code>brief</code>,
+<code>scope</code>, <code>mode</code>, <code>replay_case</code>, <code>status</code>, <code>phase</code>, <code>question</code>, <code>feedback</code> and
+<code>error</code>. The exact brief text determines its artifact identity; each execution
+has a distinct run identity.</p>
+<p>Feedback carries the reviewed identity/scope, recommendation, rationale, material
+findings, advisory comments, limitations, next steps and synthetic provenance.
+The <a href="../../recipes/oracle/review-contract.md">feedback contract</a> defines its
+fields and interpretation.</p>
+<h2 id="run-the-default-case">Run the default case</h2>
+<p>From a checkout installed with <code>uv sync --locked</code>, run:</p>
+<pre><code class="language-sh">uv run --no-sync terac-oracle start --brief &quot;Synthetic repair-shop appointment tool: demand and pricing are unproven.&quot;
+</code></pre>
+<p>Copy the returned <code>run_id</code> and replace <code>RUN_ID</code> below. The CLI stores state in
+<code>.tmp/oracle</code> by default. Keep that directory consistent across commands.</p>
+<pre><code class="language-sh">uv run --no-sync terac-oracle inspect RUN_ID
+uv run --no-sync terac-oracle resume RUN_ID
+uv run --no-sync terac-oracle inspect RUN_ID
+uv run --no-sync terac-oracle respond RUN_ID --answer &quot;Independent repair shops&quot;
+uv run --no-sync terac-oracle resume RUN_ID
+uv run --no-sync terac-oracle inspect RUN_ID
+</code></pre>
+<p>Expected sequence:</p>
+<ol>
+<li><code>start</code> saves <code>working / waiting_for_expert</code>.</li>
+<li><code>inspect</code> returns that state unchanged.</li>
+<li>First <code>resume</code> exposes <code>needs_input / awaiting_clarification</code> and a question.</li>
+<li><code>respond</code> records the answer and returns to waiting without advancing replay.</li>
+<li>Next <code>resume</code> delivers <code>succeeded / feedback_available</code>, with an
+   <code>inconclusive</code> recommendation.</li>
+<li><code>inspect</code> reads delivered feedback unchanged. Terminal <code>resume</code> also returns
+   the saved result.</li>
+</ol>
+<p>Replay does not simulate elapsed expert time. Its review does not adapt to the
+brief or answer. An unanswered clarification keeps the run paused.</p>
+<h2 id="select-another-outcome">Select another outcome</h2>
+<table>
+<thead>
+<tr>
+<th><code>replay_case</code></th>
+<th>Schedule and feedback</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>inconclusive</code></td>
+<td>Default; clarification, answer, then feedback describing insufficient evidence</td>
+</tr>
+<tr>
+<td><code>pass_with_comments</code></td>
+<td>First resume delivers <code>pass</code>, with advisory comments and no material findings</td>
+</tr>
+<tr>
+<td><code>fail</code></td>
+<td>First resume delivers a material finding: a claim of 20 paying pilot customers conflicts with 20 free trials and zero paid commitments</td>
+</tr>
+</tbody>
+</table>
+<p>Select the case when starting; the run retains it after restart:</p>
+<pre><code class="language-sh">uv run --no-sync terac-oracle start --brief &quot;Synthetic channel hypothesis for independent repair shops.&quot; --replay-case pass_with_comments
+uv run --no-sync terac-oracle start --brief &quot;Synthetic claim: 20 paying pilot customers. Evidence: 20 free trials and zero paid commitments.&quot; --replay-case fail
+</code></pre>
+<p>Resume each returned run once to receive its scripted review. Omitting
+<code>replay_case</code> in Python, or passing <code>None</code>, selects <code>inconclusive</code>.</p>
+<h2 id="use-the-same-interface-from-python">Use the same interface from Python</h2>
+<pre><code class="language-python">from pathlib import Path
+
+from recipes.oracle import Oracle
+
+oracle = Oracle(Path(&quot;.tmp/oracle&quot;))
+started = oracle.start(&quot;Synthetic repair-shop appointment tool.&quot;)
+waiting = oracle.inspect(started.run_id)
+question = oracle.resume(started.run_id)
+oracle.respond(started.run_id, &quot;Independent repair shops&quot;)
+delivered = oracle.resume(started.run_id)
+print(delivered.feedback.recommendation)
+</code></pre>
+<p>Python and CLI use the same four actions. <code>inspect</code> reads without advancement;
+<code>respond</code> saves an answer; <code>resume</code> releases at most one event.</p>
+<h2 id="decide-what-comes-next">Decide what comes next</h2>
+<p>A <code>succeeded</code> run records delivery of valid feedback. A valid <code>fail</code> or
+<code>inconclusive</code> review can complete delivery successfully. Neither completion nor
+the recommendation determines provider labor approval or payment.</p>
+<p>The calling agent may present the result, apply or decline advice, revise the
+brief or continue without another Oracle request. Explain changes relative to
+the reviewed text. A revised brief has a new identity and no inherited verdict.</p>
+<p>To request fresh linked work, use <code>start</code> with the earlier <code>run_id</code> as parent
+and an explicit intent:</p>
+<pre><code class="language-sh">uv run --no-sync terac-oracle start --brief &quot;Synthetic follow-up: investigate the channel hypothesis.&quot; --parent-id RUN_ID --intent follow_up --replay-case pass_with_comments
+</code></pre>
+<p>Use <code>new_query</code> for a new linked question. Linked work creates its own run and
+starts without feedback; it preserves the parent and can select its own case.
+It is a use of <code>start</code>, not a fifth action. <code>respond</code> answers a currently pending
+clarification; linked <code>start</code> opens new work. No real-expert continuity is implied.</p>
+<h2 id="restart-and-updates">Restart and updates</h2>
+<p>Exit and later use the same run ID and state directory. To choose a different
+state directory, place <code>--state-dir PATH</code> before the action on every invocation:</p>
+<pre><code class="language-sh">uv run --no-sync terac-oracle --state-dir .tmp/my-oracle inspect RUN_ID
+</code></pre>
+<p>Each checkpoint pins its case, checkpoint/recipe/fixture versions and semantic
+fixture digest. Every linked ancestor uses its own saved pin. Unsupported,
+legacy or changed pins return <code>checkpoint_incompatible</code> without rewriting saved
+state. There is no automatic migration.</p>
+<p>To update a clean checkout, select the reviewed revision deliberately, then run
+<code>uv sync --locked</code>. Updating source and upgrading dependencies are different
+operations. Preserve private checkpoints separately; do not assume an update can
+resume incompatible state.</p>
+<p>Local storage is plaintext JSON with atomic replacement, for one process at a
+time. It is not a daemon or shared database. No background wakeups, deadlines,
+cancellation, automatic retries or concurrent recovery are implemented.</p>
+<h2 id="errors-and-effects">Errors and effects</h2>
+<p>Empty briefs or answers, a response without a pending question, invalid parent
+intent and unknown runs are rejected. Unknown cases return <code>invalid_replay_case</code>;
+a known case unavailable to an injected replay adapter returns
+<code>replay_case_unavailable</code>. Invalid checkpoints return <code>checkpoint_incompatible</code>.
+The CLI reports these runtime rejections as a JSON error and exits with status 2.</p>
+<p>Schema validation and exact artifact/scope binding precede feedback delivery.
+Malformed or mismatched events cause workflow failure. A material finding cannot
+accompany <code>pass</code>.</p>
+<p>Replay stays default regardless of credentials; <code>--mode live</code> is rejected as
+<code>live_unavailable</code>. Disclosure, recruitment, spend, follow-up, payment, rejection
+and publication require declared authority. Feedback cannot grant it. Do not
+commit local checkpoints, private briefs or confidential responses.</p>
+<p><a href="../architecture.html">Architecture</a> explains shared state and adapter boundaries.
+<a href="../contributing.html">Contributing</a> describes offline testing and new Recipes.</p>
+      </div>
+    </article>
+    <nav class="toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+<div>
+<ul>
+<li><a href="#input-scope-and-result">Input, scope and result</a></li>
+<li><a href="#run-the-default-case">Run the default case</a></li>
+<li><a href="#select-another-outcome">Select another outcome</a></li>
+<li><a href="#use-the-same-interface-from-python">Use the same interface from Python</a></li>
+<li><a href="#decide-what-comes-next">Decide what comes next</a></li>
+<li><a href="#restart-and-updates">Restart and updates</a></li>
+<li><a href="#errors-and-effects">Errors and effects</a></li>
+</ul>
+</div>
+    </nav>
+  </div>
+</main>
+<footer class="site-footer">
+  <p>Terac Cookbook 0.1.0 · Local, offline reading view.</p>
+  <p class="source-note">Markdown is canonical. <a href="oracle.md">Read the source</a>.</p>
+</footer>
+</body>
+</html>
