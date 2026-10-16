@@ -1,0 +1,71 @@
+{
+  "recipe_contract_version": 1,
+  "fixture_version": 1,
+  "default_case": "inconclusive",
+  "cases": {
+    "pass_with_comments": {
+      "label": "Pass with comments",
+      "summary": "No material blocker; includes advisory guidance.",
+      "events": [
+        {
+          "kind": "review",
+          "feedback": {
+            "artifact_id": "$artifact_id",
+            "scope": "$scope",
+            "recommendation": "pass",
+            "rationale": "Synthetic example: the brief supports a bounded test of the buyer and channel hypothesis.",
+            "findings": [],
+            "comments": ["Keep the initial pilot focused on one repair-shop segment."],
+            "limitations": ["Scripted replay does not assess an actual market or contact a real expert."],
+            "next_steps": ["Record pilot evidence before broadening the segment."],
+            "provenance": "synthetic"
+          }
+        }
+      ]
+    },
+    "fail": {
+      "label": "Fail",
+      "summary": "A material unsupported paid-customer claim prevents proceeding with the current brief.",
+      "events": [
+        {
+          "kind": "review",
+          "feedback": {
+            "artifact_id": "$artifact_id",
+            "scope": "$scope",
+            "recommendation": "fail",
+            "rationale": "Synthetic example: the brief states that 20 customers are paying pilot customers, while its supplied evidence reports 20 free trials and zero paid commitments.",
+            "findings": ["The claim of 20 paying pilot customers is contradicted by evidence of 20 free trials and zero paid commitments."],
+            "comments": ["Separate free-trial participation from paid adoption; report the paid-customer claim only when supported by evidence."],
+            "limitations": ["Scripted replay does not assess an actual market or contact a real expert."],
+            "next_steps": ["Verify paid commitments before presenting the 20-customer claim as established."],
+            "provenance": "synthetic"
+          }
+        }
+      ]
+    },
+    "inconclusive": {
+      "label": "Inconclusive",
+      "summary": "Clarification is requested before an insufficient-evidence review.",
+      "events": [
+        {
+          "kind": "clarification",
+          "question": "Which launch segment should the synthetic review prioritize?"
+        },
+        {
+          "kind": "review",
+          "feedback": {
+            "artifact_id": "$artifact_id",
+            "scope": "$scope",
+            "recommendation": "inconclusive",
+            "rationale": "Synthetic expert example: the supplied brief lacks validated buyer and pricing evidence.",
+            "findings": ["Buyer demand and willingness to pay remain unsupported."],
+            "comments": ["Separate the buyer hypothesis from the proposed acquisition channel."],
+            "limitations": ["Scripted replay does not assess an actual market or contact a real expert."],
+            "next_steps": ["Collect evidence from independent repair-shop buyers."],
+            "provenance": "synthetic"
+          }
+        }
+      ]
+    }
+  }
+}
