@@ -57,7 +57,6 @@ def main() -> int:
                 args.uv,
                 "pip",
                 "install",
-                "--offline",
                 "--python",
                 str(python),
                 "--constraint",
