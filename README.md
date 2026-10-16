@@ -54,3 +54,10 @@ Install and update from a reviewed Git revision using `uv sync --locked`.
 These instructions do not require a published package. See the
 [update and recovery guidance](docs/recipes/oracle.md#restart-and-updates)
 before moving an existing run to another revision.
+
+## Optional read-only Terac diagnostics
+
+The pre-release connector increment adds Windows hidden-key setup and a bounded
+Python organization-context reader. These are explicit authenticated diagnostics;
+they do not submit expert work or enable Oracle live mode. Follow the
+[Terac access guide](docs/terac-access.md) for storage, calls, limits and tests.

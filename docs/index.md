@@ -40,3 +40,8 @@ private and preserve the exact state directory when restarting.
 
 Markdown is canonical. The matching HTML pages and local SVG diagrams are
 generated for offline reading; they use no external assets or browser scripts.
+
+## Check Terac access separately
+
+[Read-only diagnostics](terac-access.md) cover explicit context reads and Windows
+key setup. They remain separate from the replay runner and live expert work.

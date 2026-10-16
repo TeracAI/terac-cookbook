@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: CONTRIBUTING.md; source-sha256: b5d0b2998d9ff359948ba9c8aeb34c4f5415dde87835d4de2ceeecf26d5d8dc5 -->
+<!-- source: CONTRIBUTING.md; source-sha256: 20c653903ac964acb69fca9dfa3c44aefb7311aa24590ed4b44e235e54a98b72 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -17,6 +17,7 @@
         <a href="architecture.html">Architecture</a>
         <a href="recipes/index.html">Recipes</a>
         <a href="contributing.html" aria-current="page">Contributing</a>
+        <a href="terac-access.html">Terac access</a>
     </nav>
   </div>
 </header>
@@ -24,7 +25,7 @@
   <div class="page-layout">
     <article>
       <header class="page-header">
-        <p class="eyebrow">Cookbook 0.1.0</p>
+        <p class="eyebrow">Cookbook 0.2.0.dev0</p>
         <h1 id="contributing">Contributing</h1>
         <p class="lead">Help make agent–expert workflows easy to run, inspect and understand. A useful
 contribution can be a clearer example, a bug fix, or a small new Recipe with an
@@ -56,7 +57,7 @@ or ask a maintainer for a contribution route. Pull requests target <code>main</c
 <pre><code class="language-sh">git clone https://github.com/TeracAI/terac-cookbook.git
 cd terac-cookbook
 git switch -c recipe/your-example
-uv sync --locked
+uv sync --locked --extra connectors
 </code></pre>
 <p>Run the <a href="recipes/oracle.html#run-the-default-case">Oracle walkthrough</a> to see
 the existing caller contract. Keep local checkpoints in ignored <code>.tmp/</code> or a
@@ -132,7 +133,7 @@ local acceptance do not establish live-provider conformance.</p>
   </div>
 </main>
 <footer class="site-footer">
-  <p>Terac Cookbook 0.1.0 · Local, offline reading view.</p>
+  <p>Terac Cookbook 0.2.0.dev0 · Local, offline reading view.</p>
   <p class="source-note">Markdown is canonical. <a href="../CONTRIBUTING.md">Read the source</a>.</p>
 </footer>
 </body>
