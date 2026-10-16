@@ -24,7 +24,10 @@ PAGES = {
     "docs/recipes/oracle.md": "docs/recipes/oracle.html",
     "CONTRIBUTING.md": "docs/contributing.html",
 }
-OPTIONAL_PAGE = ("docs/mcp.md", "docs/mcp.html")
+OPTIONAL_PAGES = {
+    "docs/mcp.md": "docs/mcp.html",
+    "docs/terac-access.md": "docs/terac-access.html",
+}
 MARKDOWN_ATTRIBUTES = {
     **{
         tag: set()
