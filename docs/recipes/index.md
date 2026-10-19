@@ -11,7 +11,7 @@ willingness to pay, and channel fit. The calling agent decides how to use it.
 
 - **Identifier:** `oracle`
 - **Available mode:** synthetic offline replay
-- **Callers:** Python and `terac-oracle`
+- **Callers:** Python, `terac-oracle`, and optional [local MCP](../mcp.md)
 - **Input:** a concise brief with its claims and evidence
 - **Output:** exact-brief feedback, including a recommendation and its limitations
 - **Cases:** `pass_with_comments`, `fail`, and default `inconclusive`

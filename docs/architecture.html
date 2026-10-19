@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/architecture.md; source-sha256: ec7c695677a5f92b8e25b968fe54c9eeb8f816e0d23519fac6e918b6f65eff15 -->
+<!-- source: docs/architecture.md; source-sha256: 9a3767e84c1cfd8a343bae2e6f1333a140936914cd48a318f9e70583c3d01962 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -17,6 +17,7 @@
         <a href="architecture.html" aria-current="page">Architecture</a>
         <a href="recipes/index.html">Recipes</a>
         <a href="contributing.html">Contributing</a>
+        <a href="mcp.html">MCP</a>
         <a href="terac-access.html">Terac access</a>
     </nav>
   </div>
@@ -25,7 +26,7 @@
   <div class="page-layout">
     <article>
       <header class="page-header">
-        <p class="eyebrow">Cookbook 0.2.0.dev0</p>
+        <p class="eyebrow">Cookbook 0.2.0.dev1</p>
         <h1 id="architecture">Architecture</h1>
         <p class="lead">A Recipe defines the job. The runner makes its progress inspectable. Adapters
 supply events without taking over the Recipe's meaning.</p>
@@ -33,7 +34,8 @@ supply events without taking over the Recipe's meaning.</p>
       <div class="content">
 <p>Terac Cookbook is a local Python package. The offline baseline implements one
 Recipe, <a href="recipes/oracle.html">Oracle</a>, through Python and the <code>terac-oracle</code> CLI.
-Replay uses synthetic events without accounts, network calls or expert spend.</p>
+Replay uses synthetic events without accounts, network calls or expert spend.
+An optional <a href="mcp.html">local MCP adapter</a> exposes that same caller interface.</p>
 <p><img alt="A caller invokes a Recipe, which uses the runner, local checkpoints and replay. A future live provider adapter is a separate boundary." src="assets/cookbook-runner.svg"></p>
 <h2 id="keep-the-responsibilities-clear">Keep the responsibilities clear</h2>
 <table>
@@ -132,9 +134,18 @@ deadlines and production recovery are outside the current guarantees.</p>
 <p><strong>Inbound</strong> means a caller invokes Cookbook. <strong>Outbound</strong> means Cookbook invokes
 a provider such as Terac. These directions have distinct authentication and
 deployment responsibilities.</p>
-<p>The offline baseline exposes inbound Python and CLI calls, with replay as its
-only runner adapter. Live selection is rejected. Credentials alone never select
-live operation or establish content compatibility.</p>
+<p>The baseline exposes inbound Python, CLI and optional local-stdio MCP calls,
+with replay as its only runner adapter. Live selection is rejected. Credentials
+alone never select live operation or establish content compatibility.</p>
+<p>The MCP process owns protocol schemas, bounded error responses and serialization
+within one process. It exposes <code>cookbook_list_recipes</code> and <code>oracle_start</code>,
+<code>oracle_inspect</code>, <code>oracle_respond</code>, <code>oracle_resume</code>. It calls Oracle's existing
+methods; it adds no second execution model. Discovery reports Oracle and replay
+availability without reading or advancing runs.</p>
+<p>Inbound Cookbook MCP is separate from outbound Terac MCP/REST and the provider's
+hosted connector. This process makes no provider requests and reads no provider
+credentials. SDK stdio checks do not establish acceptance inside a named client
+application. See the <a href="mcp.html">MCP contract</a> for response formats and launch limits.</p>
 <p>A future live adapter needs an agreed caller contract and observed evidence for
 submission, progress, clarification, substantive delivery, errors and uncertain
 writes. A provider status or successful login does not establish a delivered
@@ -175,7 +186,7 @@ concrete workflow and acceptance evidence.</p>
   </div>
 </main>
 <footer class="site-footer">
-  <p>Terac Cookbook 0.2.0.dev0 · Local, offline reading view.</p>
+  <p>Terac Cookbook 0.2.0.dev1 · Local, offline reading view.</p>
   <p class="source-note">Markdown is canonical. <a href="architecture.md">Read the source</a>.</p>
 </footer>
 </body>

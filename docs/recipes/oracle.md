@@ -97,6 +97,15 @@ print(delivered.feedback.recommendation)
 Python and CLI use the same four actions. `inspect` reads without advancement;
 `respond` saves an answer; `resume` releases at most one event.
 
+## Call from a local MCP client
+
+The optional [Cookbook MCP process](../mcp.md) exposes discovery plus
+`oracle_start`, `oracle_inspect`, `oracle_respond` and `oracle_resume`. These call
+the same Oracle interface and retain replay, exact-brief binding and explicit
+resumption. Configure one local process with an absolute state-directory path.
+Application-client acceptance remains unverified; follow the MCP guide's launch
+and response contract rather than assuming a client-specific configuration.
+
 ## Decide what comes next
 
 A `succeeded` run records delivery of valid feedback. A valid `fail` or

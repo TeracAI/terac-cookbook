@@ -43,10 +43,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\demo_oracle.ps1
 - [Documentation](docs/index.md) — choose a starting point.
 - [Architecture](docs/architecture.md) — recipe, runner, replay and state.
 - [Recipes](docs/recipes/index.md) — the implemented catalog.
+- [Local MCP](docs/mcp.md) — expose the same Oracle actions to a local agent client.
 - [Contributing](CONTRIBUTING.md) — one path from proposal to tested pull request.
 
-This checkout provides Python and CLI replay. Live expert fulfillment is
-unavailable. Checkpoints are local plaintext JSON for one process at a time;
+This checkout provides Python, CLI and optional local-stdio MCP replay. Install
+MCP with `uv sync --locked --extra connectors`; the [MCP guide](docs/mcp.md)
+describes process launch and client acceptance limits. Live expert fulfillment
+is unavailable. Checkpoints are local plaintext JSON for one process at a time;
 keep private run data out of Git. A delivered review, its recommendation, a
 revised brief and provider payment are separate facts.
 

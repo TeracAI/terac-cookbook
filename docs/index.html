@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/index.md; source-sha256: 12681cd9232f828ddd4a14c2609189a7b6372a9ed70f8efef566803ea08c1a2c -->
+<!-- source: docs/index.md; source-sha256: f8061996531ac2684ab63bb147b1480afe90b62cd9c2190bc91959b0ec2d94c4 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -17,6 +17,7 @@
         <a href="architecture.html">Architecture</a>
         <a href="recipes/index.html">Recipes</a>
         <a href="contributing.html">Contributing</a>
+        <a href="mcp.html">MCP</a>
         <a href="terac-access.html">Terac access</a>
     </nav>
   </div>
@@ -25,7 +26,7 @@
   <div class="page-layout">
     <article>
       <header class="page-header">
-        <p class="eyebrow">Cookbook 0.2.0.dev0</p>
+        <p class="eyebrow">Cookbook 0.2.0.dev1</p>
         <h1 id="terac-cookbook">Terac Cookbook</h1>
         <p class="lead"><strong>Build a workflow you can inspect.</strong> Terac Cookbook shows how an agent can request
 expert feedback, wait for delivery, and decide how to use the result.</p>
@@ -41,6 +42,8 @@ locally to understand the complete workflow without an account or expert spend.<
   the runner, replay and checkpoints fit together.</li>
 <li><strong>Browse the catalog:</strong> <a href="recipes/index.html">Recipes</a> lists implemented examples
   and their available modes.</li>
+<li><strong>Connect a local agent:</strong> <a href="mcp.html">Local MCP</a> exposes discovery and the same
+  four Oracle actions through stdio.</li>
 <li><strong>Add or improve an example:</strong> <a href="contributing.html">Contributing</a> takes one
   proposal through source, offline checks and review.</li>
 </ul>
@@ -53,17 +56,20 @@ a caller exits. Linked work starts a fresh run while preserving earlier feedback
 the task or request more scoped work. Delivery does not require an automatic
 rewrite. A new brief has no inherited verdict.</p>
 <h2 id="read-the-boundaries">Read the boundaries</h2>
-<p>This baseline provides Python and CLI replay; live expert fulfillment is
-unavailable. Replay timing and content are scripted. They demonstrate software
+<p>This baseline provides Python, CLI and optional local-stdio MCP replay; live
+expert fulfillment is unavailable. Replay timing and content are scripted. They demonstrate software
 behavior, not real expert judgment or market validation.</p>
+<p>MCP application-client acceptance is separate from SDK stdio checks. Codex,
+Claude Code and other clients must be verified individually before advertising
+support. Remote hosting is outside this local process contract.</p>
 <p>Checkpoints are plaintext JSON for one process at a time. There are no background
 wakeups, deadline handling or concurrent-writer guarantees. Keep caller data
 private and preserve the exact state directory when restarting.</p>
 <p>Markdown is canonical. The matching HTML pages and local SVG diagrams are
 generated for offline reading; they use no external assets or browser scripts.</p>
 <h2 id="check-terac-access-separately">Check Terac access separately</h2>
-<p><a href="terac-access.html">Read-only diagnostics</a> cover explicit context reads and Windows
-key setup. They remain separate from the replay runner and live expert work.</p>
+<p><a href="terac-access.html">Read-only Terac diagnostics</a> expose sanitized context facts.
+They do not enable Oracle live fulfillment.</p>
       </div>
     </article>
     <nav class="toc" aria-label="On this page">
@@ -80,7 +86,7 @@ key setup. They remain separate from the replay runner and live expert work.</p>
   </div>
 </main>
 <footer class="site-footer">
-  <p>Terac Cookbook 0.2.0.dev0 · Local, offline reading view.</p>
+  <p>Terac Cookbook 0.2.0.dev1 · Local, offline reading view.</p>
   <p class="source-note">Markdown is canonical. <a href="index.md">Read the source</a>.</p>
 </footer>
 </body>

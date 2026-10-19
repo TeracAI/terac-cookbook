@@ -41,7 +41,7 @@ jobs:
         run: uv build
       - name: Exercise installed wheel outside checkout
         shell: bash
-        run: uv run --no-sync python scripts/smoke_wheel.py --wheel dist/*.whl
+        run: uv run --no-sync python scripts/smoke_wheel.py --wheel dist/*.whl --with-mcp
 
   windows-credentials:
     runs-on: windows-latest
