@@ -16,7 +16,7 @@ offline demonstration.
    recipe, lifecycle in the runner and transport in adapters.
 3. **Make one focused change.** Branch from the current `main`. Add source,
    synthetic fixtures, public-interface tests and the documentation needed to
-   run the example. Document any explicit entrypoint registration changes.
+   run the example. Document any explicit CLI or MCP registration changes.
 4. **Check and explain it.** Run the offline checks below. Open a pull request
    explaining the resulting behavior, test evidence, fixture provenance and
    any simulated or unverified parts. Resolve review findings before merge.
@@ -40,6 +40,10 @@ Run the [Oracle walkthrough](docs/recipes/oracle.md#run-the-default-case) to see
 the existing caller contract. Keep local checkpoints in ignored `.tmp/` or a
 private directory outside the checkout.
 
+The `connectors` extra installs the locked HTTPX and MCP dependencies needed by this
+revision's stdio integration tests. It does not enable live provider work.
+See the [MCP guide](docs/mcp.md) before changing tool schemas or process setup.
+
 ## Build a Recipe
 
 Each implemented Recipe lives under `recipes/<recipe-id>/`. Its short README
@@ -61,7 +65,7 @@ boundaries. Extend those contracts only where the new behavior needs it.
 
 ## Test the caller's workflow
 
-Prefer focused end-to-end checks through the same Python or CLI interface a
+Prefer focused end-to-end checks through the same Python, CLI or MCP interface a
 caller uses. Cover the successful path and the failures that could change a
 caller's decision: invalid input, paused work, read-only inspection, restart,
 wrong artifact/scope, linked work and incompatible checkpoints where applicable.
@@ -106,3 +110,10 @@ the agreed behavior, repository invariants, fixture provenance and evidence from
 the final revision. Passing CI establishes the checks that ran; required checks,
 review rules and merge permissions are separate repository settings. Review and
 local acceptance do not establish live-provider conformance.
+
+## Optional agent guidance
+
+The repository includes optional `recipe-creation` and `terac-cookbook` skills
+under `.agents/skills/`. They point back to the canonical contribution and caller
+contracts. Use them only through a host that supports their format; this does not
+establish automatic discovery or application-client compatibility.

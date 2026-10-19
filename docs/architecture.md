@@ -6,6 +6,7 @@ supply events without taking over the Recipe's meaning.
 Terac Cookbook is a local Python package. The offline baseline implements one
 Recipe, [Oracle](recipes/oracle.md), through Python and the `terac-oracle` CLI.
 Replay uses synthetic events without accounts, network calls or expert spend.
+An optional [local MCP adapter](mcp.md) exposes that same caller interface.
 
 ![A caller invokes a Recipe, which uses the runner, local checkpoints and replay. A future live provider adapter is a separate boundary.](assets/cookbook-runner.svg)
 
@@ -78,9 +79,20 @@ deadlines and production recovery are outside the current guarantees.
 a provider such as Terac. These directions have distinct authentication and
 deployment responsibilities.
 
-The offline baseline exposes inbound Python and CLI calls, with replay as its
-only runner adapter. Live selection is rejected. Credentials alone never select
-live operation or establish content compatibility.
+The baseline exposes inbound Python, CLI and optional local-stdio MCP calls,
+with replay as its only runner adapter. Live selection is rejected. Credentials
+alone never select live operation or establish content compatibility.
+
+The MCP process owns protocol schemas, bounded error responses and serialization
+within one process. It exposes `cookbook_list_recipes` and `oracle_start`,
+`oracle_inspect`, `oracle_respond`, `oracle_resume`. It calls Oracle's existing
+methods; it adds no second execution model. Discovery reports Oracle and replay
+availability without reading or advancing runs.
+
+Inbound Cookbook MCP is separate from outbound Terac MCP/REST and the provider's
+hosted connector. This process makes no provider requests and reads no provider
+credentials. SDK stdio checks do not establish acceptance inside a named client
+application. See the [MCP contract](mcp.md) for response formats and launch limits.
 
 A future live adapter needs an agreed caller contract and observed evidence for
 submission, progress, clarification, substantive delivery, errors and uncertain

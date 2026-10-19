@@ -14,6 +14,8 @@ locally to understand the complete workflow without an account or expert spend.
   the runner, replay and checkpoints fit together.
 - **Browse the catalog:** [Recipes](recipes/index.md) lists implemented examples
   and their available modes.
+- **Connect a local agent:** [Local MCP](mcp.md) exposes discovery and the same
+  four Oracle actions through stdio.
 - **Add or improve an example:** [Contributing](../CONTRIBUTING.md) takes one
   proposal through source, offline checks and review.
 
@@ -30,9 +32,13 @@ rewrite. A new brief has no inherited verdict.
 
 ## Read the boundaries
 
-This baseline provides Python and CLI replay; live expert fulfillment is
-unavailable. Replay timing and content are scripted. They demonstrate software
+This baseline provides Python, CLI and optional local-stdio MCP replay; live
+expert fulfillment is unavailable. Replay timing and content are scripted. They demonstrate software
 behavior, not real expert judgment or market validation.
+
+MCP application-client acceptance is separate from SDK stdio checks. Codex,
+Claude Code and other clients must be verified individually before advertising
+support. Remote hosting is outside this local process contract.
 
 Checkpoints are plaintext JSON for one process at a time. There are no background
 wakeups, deadline handling or concurrent-writer guarantees. Keep caller data
@@ -43,5 +49,5 @@ generated for offline reading; they use no external assets or browser scripts.
 
 ## Check Terac access separately
 
-[Read-only diagnostics](terac-access.md) cover explicit context reads and Windows
-key setup. They remain separate from the replay runner and live expert work.
+[Read-only Terac diagnostics](terac-access.md) expose sanitized context facts.
+They do not enable Oracle live fulfillment.

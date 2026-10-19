@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../assets/site.css">
 </head>
 <body>
-<!-- source: docs/recipes/index.md; source-sha256: fc227c0bc2d31c91bf02ba90d4c9bb7ee08a114f1a586e224c4966f783069437 -->
+<!-- source: docs/recipes/index.md; source-sha256: 1611e81e369d209ae0ffc7d579bd05542a84274aac4b5c129bf27300b9fef13c -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -17,6 +17,7 @@
         <a href="../architecture.html">Architecture</a>
         <a href="index.html" aria-current="page">Recipes</a>
         <a href="../contributing.html">Contributing</a>
+        <a href="../mcp.html">MCP</a>
         <a href="../terac-access.html">Terac access</a>
     </nav>
   </div>
@@ -25,7 +26,7 @@
   <div class="page-layout">
     <article>
       <header class="page-header">
-        <p class="eyebrow">Cookbook 0.2.0.dev0</p>
+        <p class="eyebrow">Cookbook 0.2.0.dev1</p>
         <h1 id="recipes">Recipes</h1>
         <p class="lead">A Recipe is a runnable agent–expert workflow with understandable input, output,
 permitted effects and replay data. The catalog currently contains one implemented
@@ -38,7 +39,7 @@ willingness to pay, and channel fit. The calling agent decides how to use it.</p
 <ul>
 <li><strong>Identifier:</strong> <code>oracle</code></li>
 <li><strong>Available mode:</strong> synthetic offline replay</li>
-<li><strong>Callers:</strong> Python and <code>terac-oracle</code></li>
+<li><strong>Callers:</strong> Python, <code>terac-oracle</code>, and optional <a href="../mcp.html">local MCP</a></li>
 <li><strong>Input:</strong> a concise brief with its claims and evidence</li>
 <li><strong>Output:</strong> exact-brief feedback, including a recommendation and its limitations</li>
 <li><strong>Cases:</strong> <code>pass_with_comments</code>, <code>fail</code>, and default <code>inconclusive</code></li>
@@ -68,7 +69,7 @@ registration; adding YAML does not create executable behavior. Follow the
   </div>
 </main>
 <footer class="site-footer">
-  <p>Terac Cookbook 0.2.0.dev0 · Local, offline reading view.</p>
+  <p>Terac Cookbook 0.2.0.dev1 · Local, offline reading view.</p>
   <p class="source-note">Markdown is canonical. <a href="index.md">Read the source</a>.</p>
 </footer>
 </body>

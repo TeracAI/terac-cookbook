@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../assets/site.css">
 </head>
 <body>
-<!-- source: docs/recipes/oracle.md; source-sha256: db80f27c0eb9615508d5ef411c3fcb286d1f198756c9a7975e6e5f9d879d7fe3 -->
+<!-- source: docs/recipes/oracle.md; source-sha256: c966bfb24554f44988c244bb93fd02d21566caa47b6c7fcdd0ce2b7c46f65802 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -17,6 +17,7 @@
         <a href="../architecture.html">Architecture</a>
         <a href="index.html">Recipes</a>
         <a href="../contributing.html">Contributing</a>
+        <a href="../mcp.html">MCP</a>
         <a href="../terac-access.html">Terac access</a>
     </nav>
   </div>
@@ -25,7 +26,7 @@
   <div class="page-layout">
     <article>
       <header class="page-header">
-        <p class="eyebrow">Cookbook 0.2.0.dev0</p>
+        <p class="eyebrow">Cookbook 0.2.0.dev1</p>
         <h1 id="oracle">Oracle</h1>
         <p class="lead"><strong>Turn a go-to-market brief into a clear next decision.</strong> Oracle returns scoped
 review feedback; the calling agent decides whether to explain it, revise the
@@ -118,6 +119,13 @@ print(delivered.feedback.recommendation)
 </code></pre>
 <p>Python and CLI use the same four actions. <code>inspect</code> reads without advancement;
 <code>respond</code> saves an answer; <code>resume</code> releases at most one event.</p>
+<h2 id="call-from-a-local-mcp-client">Call from a local MCP client</h2>
+<p>The optional <a href="../mcp.html">Cookbook MCP process</a> exposes discovery plus
+<code>oracle_start</code>, <code>oracle_inspect</code>, <code>oracle_respond</code> and <code>oracle_resume</code>. These call
+the same Oracle interface and retain replay, exact-brief binding and explicit
+resumption. Configure one local process with an absolute state-directory path.
+Application-client acceptance remains unverified; follow the MCP guide's launch
+and response contract rather than assuming a client-specific configuration.</p>
 <h2 id="decide-what-comes-next">Decide what comes next</h2>
 <p>A <code>succeeded</code> run records delivery of valid feedback. A valid <code>fail</code> or
 <code>inconclusive</code> review can complete delivery successfully. Neither completion nor
@@ -174,6 +182,7 @@ commit local checkpoints, private briefs or confidential responses.</p>
 <li><a href="#run-the-default-case">Run the default case</a></li>
 <li><a href="#select-another-outcome">Select another outcome</a></li>
 <li><a href="#use-the-same-interface-from-python">Use the same interface from Python</a></li>
+<li><a href="#call-from-a-local-mcp-client">Call from a local MCP client</a></li>
 <li><a href="#decide-what-comes-next">Decide what comes next</a></li>
 <li><a href="#restart-and-updates">Restart and updates</a></li>
 <li><a href="#errors-and-effects">Errors and effects</a></li>
@@ -183,7 +192,7 @@ commit local checkpoints, private briefs or confidential responses.</p>
   </div>
 </main>
 <footer class="site-footer">
-  <p>Terac Cookbook 0.2.0.dev0 · Local, offline reading view.</p>
+  <p>Terac Cookbook 0.2.0.dev1 · Local, offline reading view.</p>
   <p class="source-note">Markdown is canonical. <a href="oracle.md">Read the source</a>.</p>
 </footer>
 </body>

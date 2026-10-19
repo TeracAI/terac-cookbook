@@ -1,15 +1,16 @@
 [project]
 name = "terac-cookbook"
-version = "0.2.0.dev0"
+version = "0.2.0.dev1"
 description = "Runnable examples of agents working with expert feedback"
 requires-python = ">=3.11"
 dependencies = ["pydantic>=2.12,<3"]
 
 [project.scripts]
 terac-oracle = "recipes.oracle.__main__:main"
+terac-cookbook-mcp = "adapters.cookbook_mcp:main"
 
 [project.optional-dependencies]
-connectors = ["httpx>=0.28,<0.29"]
+connectors = ["httpx>=0.28,<0.29", "mcp>=1.26,<2"]
 
 [dependency-groups]
 dev = ["pytest>=8.4,<9", "ruff>=0.12,<1", "Markdown>=3.7,<4"]
