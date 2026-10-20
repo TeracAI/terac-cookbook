@@ -20,8 +20,9 @@ verified provider payload schema.
 
 The typed snapshot returns tuple-backed feedback. Schema and exact artifact/scope
 binding are checked before delivery. A material finding cannot accompany `pass`.
-Malformed or mismatched content causes workflow failure rather than becoming a
-recommendation.
+Malformed or mismatched content is never delivered as a recommendation. Replay
+records workflow failure; simulation rejects the observation without changing
+the saved run.
 
 ## Recommendation meaning
 

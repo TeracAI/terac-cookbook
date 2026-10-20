@@ -10,7 +10,7 @@ Recipe.
 willingness to pay, and channel fit. The calling agent decides how to use it.
 
 - **Identifier:** `oracle`
-- **Available mode:** synthetic offline replay
+- **Available modes:** synthetic offline replay by default; local simulation when explicitly configured and selected
 - **Callers:** Python, `terac-oracle`, and optional [local MCP](../mcp.md)
 - **Input:** a concise brief with its claims and evidence
 - **Output:** exact-brief feedback, including a recommendation and its limitations

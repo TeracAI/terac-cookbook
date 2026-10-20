@@ -23,10 +23,13 @@ def anyio_backend():
 
 
 @asynccontextmanager
-async def cookbook_session(state_dir, *, env=None):
+async def cookbook_session(state_dir, *, env=None, simulation_dir=None):
+    args = ["-m", "adapters.cookbook_mcp", "--state-dir", str(state_dir)]
+    if simulation_dir is not None:
+        args.extend(["--simulation-dir", str(simulation_dir)])
     parameters = StdioServerParameters(
         command=sys.executable,
-        args=["-m", "adapters.cookbook_mcp", "--state-dir", str(state_dir)],
+        args=args,
         cwd=str(ROOT),
         env=env,
     )
@@ -40,6 +43,41 @@ async def cookbook_session(state_dir, *, env=None):
 async def call(session, name, arguments=None):
     result = await session.call_tool(name, arguments or {})
     return result, json.loads(result.content[0].text)
+
+
+def publish_simulation_observation(simulation_dir, snapshot, revision, kind, **fields):
+    reference = snapshot["simulation_ref"]
+    observation = {
+        "run_id": snapshot["run_id"],
+        "reference": reference,
+        "artifact_id": snapshot["artifact_id"],
+        "scope": snapshot["scope"],
+        "revision": revision,
+        "kind": kind,
+        **fields,
+    }
+    folder = simulation_dir / "runs" / reference.removeprefix("sim:") / "observations"
+    folder.mkdir(parents=True, exist_ok=True)
+    final = folder / f"{revision:020d}.json"
+    assert not final.exists()
+    temporary = final.with_suffix(".tmp")
+    temporary.write_text(json.dumps(observation), encoding="utf-8")
+    temporary.rename(final)
+    return final
+
+
+def synthetic_review(snapshot):
+    return {
+        "artifact_id": snapshot["artifact_id"],
+        "scope": snapshot["scope"],
+        "recommendation": "inconclusive",
+        "rationale": "Synthetic local mailbox review.",
+        "findings": [],
+        "comments": [],
+        "limitations": ["Synthetic rehearsal only."],
+        "next_steps": [],
+        "provenance": "synthetic",
+    }
 
 
 @pytest.mark.anyio
@@ -361,6 +399,128 @@ async def test_json_looking_briefs_and_answers_keep_exact_python_caller_text(
         assert result.isError is True
         assert error == {"error": "invalid_request_or_checkpoint"}
         assert len(list(mcp_dir.iterdir())) == 1
+
+
+@pytest.mark.anyio
+async def test_simulation_is_hidden_until_local_mailbox_is_configured(tmp_path):
+    state_dir = tmp_path / "state"
+    async with cookbook_session(state_dir) as session:
+        _, discovery = await call(session, "cookbook_list_recipes")
+        assert discovery["recipes"][0]["modes"] == ["replay"]
+        result, error = await call(session, "oracle_start", {"brief": BRIEF, "mode": "simulation"})
+
+    assert result.isError is True
+    assert error == {"error": "simulation_unavailable"}
+    assert not state_dir.exists()
+
+
+@pytest.mark.anyio
+async def test_simulation_mcp_stdio_uses_out_of_band_observations(tmp_path):
+    state_dir = tmp_path / "state"
+    simulation_dir = tmp_path / "simulation"
+    async with cookbook_session(state_dir, simulation_dir=simulation_dir) as session:
+        _, discovery = await call(session, "cookbook_list_recipes")
+        assert discovery["recipes"][0]["modes"] == ["replay", "simulation"]
+        assert discovery["recipes"][0]["live_available"] is False
+        _, started = await call(session, "oracle_start", {"brief": BRIEF, "mode": "simulation"})
+        run_args = {"run_id": started["run_id"]}
+        checkpoint = state_dir / f"{started['run_id']}.json"
+        original = checkpoint.read_bytes()
+
+        assert started["simulation_ref"].startswith("sim:")
+        assert started["simulation_revision"] == 0
+        assert (await call(session, "oracle_inspect", run_args))[1] == started
+        _, no_observation = await call(session, "oracle_resume", run_args)
+        assert no_observation == started
+        assert checkpoint.read_bytes() == original
+
+        publish_simulation_observation(simulation_dir, started, 1, "waiting")
+        _, waiting = await call(session, "oracle_resume", run_args)
+        assert waiting["simulation_revision"] == 1
+        assert (await call(session, "oracle_inspect", run_args))[1] == waiting
+
+        publish_simulation_observation(
+            simulation_dir,
+            started,
+            2,
+            "clarification",
+            question="Who is the buyer?",
+        )
+        assert (await call(session, "oracle_inspect", run_args))[1] == waiting
+        _, pending = await call(session, "oracle_resume", run_args)
+        assert pending["status"] == "needs_input"
+        publish_simulation_observation(simulation_dir, started, 3, "waiting")
+        before_respond = {path: path.read_bytes() for path in simulation_dir.rglob("*.json")}
+        _, answered = await call(
+            session,
+            "oracle_respond",
+            {**run_args, "answer": "Independent repair shops"},
+        )
+        assert answered["status"] == "working"
+        assert answered["simulation_revision"] == 2
+        assert {
+            path: path.read_bytes() for path in simulation_dir.rglob("*.json")
+        } == before_respond
+
+        _, second_wait = await call(session, "oracle_resume", run_args)
+        assert second_wait["simulation_revision"] == 3
+        publish_simulation_observation(
+            simulation_dir,
+            started,
+            4,
+            "review",
+            feedback=synthetic_review(started),
+        )
+        _, delivered = await call(session, "oracle_resume", run_args)
+        assert delivered["status"] == "succeeded"
+        assert delivered["simulation_revision"] == 4
+        assert delivered["feedback"]["provenance"] == "synthetic"
+        assert delivered["feedback"]["artifact_id"] == started["artifact_id"]
+        assert delivered["feedback"]["scope"] == started["scope"]
+
+    async with cookbook_session(state_dir, simulation_dir=simulation_dir) as session:
+        assert (await call(session, "oracle_inspect", run_args))[1] == delivered
+        publish_simulation_observation(simulation_dir, started, 5, "waiting")
+        checkpoint = state_dir / f"{started['run_id']}.json"
+        accepted_bytes = checkpoint.read_bytes()
+        result, terminal = await call(session, "oracle_resume", run_args)
+        assert result.isError is False
+        assert terminal == delivered
+        assert checkpoint.read_bytes() == accepted_bytes
+
+
+@pytest.mark.anyio
+async def test_invalid_simulation_mcp_observation_is_sanitized_and_atomic(tmp_path):
+    state_dir = tmp_path / "state"
+    simulation_dir = tmp_path / "simulation"
+    async with cookbook_session(state_dir, simulation_dir=simulation_dir) as session:
+        _, started = await call(session, "oracle_start", {"brief": BRIEF, "mode": "simulation"})
+        observation = {
+            "run_id": started["run_id"],
+            "reference": started["simulation_ref"],
+            "artifact_id": "0" * 64,
+            "scope": started["scope"],
+            "revision": 1,
+            "kind": "waiting",
+            "private-canary": PRIVATE_INPUT,
+        }
+        folder = (
+            simulation_dir
+            / "runs"
+            / started["simulation_ref"].removeprefix("sim:")
+            / "observations"
+        )
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f"{1:020d}.json").write_text(json.dumps(observation), encoding="utf-8")
+        checkpoint = state_dir / f"{started['run_id']}.json"
+        original = checkpoint.read_bytes()
+
+        result, error = await call(session, "oracle_resume", {"run_id": started["run_id"]})
+
+    assert result.isError is True
+    assert error == {"error": "simulation_observation_invalid"}
+    assert PRIVATE_INPUT not in json.dumps(error)
+    assert checkpoint.read_bytes() == original
 
 
 def test_startup_rejects_relative_state_directory_before_creating_state():
