@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/architecture.md; source-sha256: 9a3767e84c1cfd8a343bae2e6f1333a140936914cd48a318f9e70583c3d01962 -->
+<!-- source: docs/architecture.md; source-sha256: b92ffc0c90ccb25e84bbe3c84ec810e1064eb321382a5dee0006f127aec0c30d -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -67,6 +67,10 @@ An optional <a href="mcp.html">local MCP adapter</a> exposes that same caller in
 <td>Synthetic events and controlled scheduling</td>
 </tr>
 <tr>
+<td>Simulation mailbox adapter</td>
+<td>Bounded reads of explicitly configured, operator-published synthetic observations</td>
+</tr>
+<tr>
 <td>Future provider adapter</td>
 <td>Authentication, transport, provider identities and verified work-content mapping</td>
 </tr>
@@ -100,7 +104,7 @@ A second working Recipe can justify additional shared behavior.</p>
 </tr>
 <tr>
 <td><code>resume</code></td>
-<td>Reattach and release at most one replay event; paused or terminal work returns saved state</td>
+<td>Reattach and release at most one replay event or observe the next simulation revision; paused or terminal work returns saved state</td>
 </tr>
 </tbody>
 </table>
@@ -114,12 +118,13 @@ checkpoint does not wake an agent or schedule a worker.</p>
 defines the meaning of its result.</p>
 <p>For Oracle, a <code>succeeded</code> run means validated feedback was delivered. That review
 can recommend <code>pass</code>, <code>fail</code> or <code>inconclusive</code>. Malformed feedback or a wrong
-artifact/scope binding causes workflow failure rather than becoming a review.</p>
+artifact/scope binding is never delivered as a review. Replay records workflow
+failure; simulation rejects the observation without changing the saved run.</p>
 <p>Keep these facts separate: run completion, expert delivery, recommendation,
 caller revision, and provider labor/payment state. A changed artifact has no
 inherited verdict. Feedback grants no authority for further effects.</p>
 <h2 id="replay-restart-and-compatibility">Replay, restart and compatibility</h2>
-<p>Each run pins its replay case, checkpoint/recipe/fixture versions and a semantic
+<p>Each replay run pins its case, checkpoint/recipe/fixture versions and a semantic
 fixture digest. A linked lineage validates each ancestor against its own pin.
 Whitespace and JSON object-key order do not change fixture identity; changed
 events, cases or versions do.</p>
@@ -127,6 +132,14 @@ events, cases or versions do.</p>
 scope, lifecycle, replay position and lineage before returning state. Legacy,
 unsupported or altered checkpoints return <code>checkpoint_incompatible</code> without
 rewriting or silently migrating saved bytes.</p>
+<p>Opt-in simulation uses a separate version 2 checkpoint with an opaque synthetic
+reference, last accepted local revision and observation digest. It has no replay
+fixture pins. Oracle owns exact artifact/scope and feedback validation; the mailbox
+owns bounded transport reads; the runner owns saved lifecycle progression.
+Only explicit resume observes one next message. Inspect and respond do not
+observe it. Missing input preserves bytes; malformed input returns a sanitized
+error without committing progress. The <a href="recipes/oracle.html#opt-in-to-local-simulation">operator contract</a>
+requires append-only atomic publication; accepted history is not audited.</p>
 <p>Storage uses atomic replacement of local plaintext JSON and supports one process
 at a time. Concurrent writers, encryption, expiry, automatic retries, cancellation,
 deadlines and production recovery are outside the current guarantees.</p>
@@ -135,13 +148,14 @@ deadlines and production recovery are outside the current guarantees.</p>
 a provider such as Terac. These directions have distinct authentication and
 deployment responsibilities.</p>
 <p>The baseline exposes inbound Python, CLI and optional local-stdio MCP calls,
-with replay as its only runner adapter. Live selection is rejected. Credentials
+with replay as default and an explicitly configured local simulation adapter.
+Live selection is rejected. Credentials
 alone never select live operation or establish content compatibility.</p>
 <p>The MCP process owns protocol schemas, bounded error responses and serialization
 within one process. It exposes <code>cookbook_list_recipes</code> and <code>oracle_start</code>,
 <code>oracle_inspect</code>, <code>oracle_respond</code>, <code>oracle_resume</code>. It calls Oracle's existing
 methods; it adds no second execution model. Discovery reports Oracle and replay
-availability without reading or advancing runs.</p>
+and configured simulation availability without reading or advancing runs.</p>
 <p>Inbound Cookbook MCP is separate from outbound Terac MCP/REST and the provider's
 hosted connector. This process makes no provider requests and reads no provider
 credentials. SDK stdio checks do not establish acceptance inside a named client

@@ -1,13 +1,53 @@
+import hashlib
 import json
 from importlib.resources import files
+from uuid import uuid4
 
 import pytest
 
 from adapters.replay import ReplayAdapter
-from recipes.oracle import Oracle
+from recipes.oracle import Oracle, SimulationUnavailableError
 from runtime.runner import CheckpointIncompatibleError
 
 BRIEF = "Synthetic repair-shop appointment tool: buyer demand and pricing are unproven."
+
+
+def simulation_observation(snapshot, revision, kind, **fields):
+    return {
+        "run_id": snapshot.run_id,
+        "reference": snapshot.simulation_ref,
+        "artifact_id": snapshot.artifact_id,
+        "scope": list(snapshot.scope),
+        "revision": revision,
+        "kind": kind,
+        **fields,
+    }
+
+
+def publish_simulation_observation(simulation_dir, snapshot, observation):
+    reference_id = snapshot.simulation_ref.removeprefix("sim:")
+    folder = simulation_dir / "runs" / reference_id / "observations"
+    folder.mkdir(parents=True, exist_ok=True)
+    final = folder / f"{observation['revision']:020d}.json"
+    assert not final.exists()
+    temporary = final.with_suffix(".tmp")
+    temporary.write_text(json.dumps(observation), encoding="utf-8")
+    temporary.rename(final)
+    return final
+
+
+def simulation_review(snapshot):
+    return {
+        "artifact_id": snapshot.artifact_id,
+        "scope": list(snapshot.scope),
+        "recommendation": "inconclusive",
+        "rationale": "Synthetic local mailbox review.",
+        "findings": [],
+        "comments": [],
+        "limitations": ["Synthetic rehearsal only."],
+        "next_steps": [],
+        "provenance": "synthetic",
+    }
 
 
 def test_default_start_is_replay_and_inspection_preserves_waiting(tmp_path, monkeypatch):
@@ -33,7 +73,370 @@ def test_default_start_pins_the_inconclusive_fixture_across_restart(tmp_path):
     assert checkpoint["replay_case"] == "inconclusive"
     assert checkpoint["replay_fixture_version"] == 1
     assert len(checkpoint["replay_fixture_digest"]) == 64
+    assert not {"simulation_ref", "simulation_revision", "simulation_observation_digest"} & set(
+        checkpoint
+    )
     assert Oracle(tmp_path).inspect(started.run_id) == started
+
+
+def test_simulation_requires_explicit_local_mailbox_before_creating_a_run(tmp_path):
+    from recipes.oracle import SimulationUnavailableError
+
+    with pytest.raises(SimulationUnavailableError) as error:
+        Oracle(tmp_path / "state").start(BRIEF, mode="simulation")
+
+    assert error.value.code == "simulation_unavailable"
+    assert not (tmp_path / "state").exists()
+
+
+def test_simulation_v2_binds_opaque_reference_without_replay_pins(tmp_path):
+    state_dir = tmp_path / "state"
+    simulation_dir = tmp_path / "simulation"
+    oracle = Oracle(state_dir, simulation_dir=simulation_dir)
+    started = oracle.start(BRIEF, mode="simulation")
+    checkpoint = state_dir / f"{started.run_id}.json"
+    stored = json.loads(checkpoint.read_text(encoding="utf-8"))
+
+    assert started.mode == "simulation"
+    assert started.simulation_ref.startswith("sim:")
+    assert started.simulation_revision == 0
+    assert started.status == "working"
+    assert stored["checkpoint_version"] == 2
+    assert stored["mode"] == "simulation"
+    assert stored["simulation_ref"] == started.simulation_ref
+    assert stored["simulation_revision"] == 0
+    assert stored["simulation_observation_digest"] is None
+    assert not {"replay_case", "replay_fixture_version", "replay_fixture_digest", "cursor"} & set(
+        stored
+    )
+    assert Oracle(state_dir, simulation_dir=simulation_dir).inspect(started.run_id) == started
+    assert "replay_case" not in started.model_dump(mode="json")
+    checkpoint_bytes = checkpoint.read_bytes()
+    assert Oracle(state_dir).inspect(started.run_id) == started
+    with pytest.raises(SimulationUnavailableError):
+        Oracle(state_dir).resume(started.run_id)
+    assert checkpoint.read_bytes() == checkpoint_bytes
+
+
+def test_simulation_waits_without_mutation_until_next_observation(tmp_path):
+    state_dir = tmp_path / "state"
+    simulation_dir = tmp_path / "simulation"
+    oracle = Oracle(state_dir, simulation_dir=simulation_dir)
+    started = oracle.start(BRIEF, mode="simulation")
+    checkpoint = state_dir / f"{started.run_id}.json"
+    original = checkpoint.read_bytes()
+
+    assert oracle.inspect(started.run_id) == started
+    assert oracle.resume(started.run_id) == started
+    assert checkpoint.read_bytes() == original
+
+    folder = simulation_dir / "runs" / started.simulation_ref.removeprefix("sim:") / "observations"
+    folder.mkdir(parents=True, exist_ok=True)
+    temporary = folder / f"{1:020d}.json.tmp"
+    temporary.write_text("partial", encoding="utf-8")
+    assert oracle.resume(started.run_id) == started
+    assert checkpoint.read_bytes() == original
+    published = publish_simulation_observation(
+        simulation_dir,
+        started,
+        simulation_observation(started, 1, "waiting"),
+    )
+    waiting = oracle.resume(started.run_id)
+
+    assert waiting.status == "working"
+    assert waiting.simulation_revision == 1
+    stored = json.loads(checkpoint.read_text(encoding="utf-8"))
+    assert (
+        stored["simulation_observation_digest"]
+        == hashlib.sha256(published.read_bytes()).hexdigest()
+    )
+    accepted_bytes = checkpoint.read_bytes()
+    assert oracle.resume(started.run_id) == waiting
+    assert checkpoint.read_bytes() == accepted_bytes
+
+
+def test_simulation_does_not_scan_later_revision_when_next_file_is_missing(tmp_path):
+    state_dir = tmp_path / "state"
+    simulation_dir = tmp_path / "simulation"
+    oracle = Oracle(state_dir, simulation_dir=simulation_dir)
+    started = oracle.start(BRIEF, mode="simulation")
+    later = simulation_observation(started, 2, "waiting")
+    folder = simulation_dir / "runs" / started.simulation_ref.removeprefix("sim:") / "observations"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / f"{2:020d}.json").write_text(json.dumps(later), encoding="utf-8")
+    checkpoint = state_dir / f"{started.run_id}.json"
+    original = checkpoint.read_bytes()
+
+    assert oracle.resume(started.run_id) == started
+    assert checkpoint.read_bytes() == original
+
+
+def test_simulation_observation_at_exact_size_limit_is_accepted(tmp_path):
+    state_dir = tmp_path / "state"
+    simulation_dir = tmp_path / "simulation"
+    oracle = Oracle(state_dir, simulation_dir=simulation_dir)
+    started = oracle.start(BRIEF, mode="simulation")
+    payload = simulation_observation(started, 1, "clarification", question="x")
+    raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    payload["question"] = "x" * (65_536 - len(raw) + 1)
+    raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    assert len(raw) == 65_536
+    folder = simulation_dir / "runs" / started.simulation_ref.removeprefix("sim:") / "observations"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / f"{1:020d}.json").write_bytes(raw)
+
+    accepted = oracle.resume(started.run_id)
+
+    assert accepted.status == "needs_input"
+    assert accepted.simulation_revision == 1
+    assert len(accepted.question) == len(payload["question"])
+
+
+def test_simulation_mailbox_supports_unbounded_out_of_band_clarification_cycles(tmp_path):
+    state_dir = tmp_path / "state"
+    simulation_dir = tmp_path / "simulation"
+    oracle = Oracle(state_dir, simulation_dir=simulation_dir)
+    started = oracle.start(BRIEF, mode="simulation")
+
+    publish_simulation_observation(
+        simulation_dir, started, simulation_observation(started, 1, "waiting")
+    )
+    first_wait = oracle.resume(started.run_id)
+    publish_simulation_observation(
+        simulation_dir,
+        started,
+        simulation_observation(started, 2, "clarification", question="Who is the buyer?"),
+    )
+    first_question = oracle.resume(started.run_id)
+    assert first_question.status == "needs_input"
+    answered = oracle.respond(started.run_id, "Independent repair shops")
+    assert answered.simulation_revision == 2
+    assert answered.status == "working"
+
+    publish_simulation_observation(
+        simulation_dir, started, simulation_observation(started, 3, "waiting")
+    )
+    second_wait = oracle.resume(started.run_id)
+    publish_simulation_observation(
+        simulation_dir,
+        started,
+        simulation_observation(started, 4, "clarification", question="Which region?"),
+    )
+    second_question = oracle.resume(started.run_id)
+    assert second_question.status == "needs_input"
+    oracle.respond(started.run_id, "Madrid")
+
+    publish_simulation_observation(
+        simulation_dir,
+        started,
+        simulation_observation(started, 5, "review", feedback=simulation_review(started)),
+    )
+    delivered = oracle.resume(started.run_id)
+
+    assert first_wait.simulation_revision == 1
+    assert second_wait.simulation_revision == 3
+    assert delivered.simulation_revision == 5
+    assert delivered.status == "succeeded"
+    assert delivered.feedback.provenance == "synthetic"
+    assert delivered.feedback.artifact_id == started.artifact_id
+    assert delivered.feedback.scope == started.scope
+    assert Oracle(state_dir, simulation_dir=simulation_dir).inspect(started.run_id) == delivered
+
+    checkpoint = state_dir / f"{started.run_id}.json"
+    accepted_bytes = checkpoint.read_bytes()
+    terminal_file = publish_simulation_observation(
+        simulation_dir, started, simulation_observation(started, 6, "waiting")
+    )
+    assert oracle.resume(started.run_id) == delivered
+    assert checkpoint.read_bytes() == accepted_bytes
+    assert terminal_file.exists()
+
+
+@pytest.mark.parametrize(
+    "invalid_observation",
+    [
+        "malformed_json",
+        "unknown_field",
+        "wrong_run",
+        "wrong_reference",
+        "wrong_artifact",
+        "wrong_scope",
+        "stale_revision",
+        "revision_gap",
+        "invalid_review",
+        "conflicting_payload",
+        "null_waiting_question",
+        "null_waiting_feedback",
+        "null_clarification_feedback",
+        "null_review_question",
+        "oversized",
+    ],
+)
+def test_invalid_simulation_observations_preserve_checkpoint_bytes(tmp_path, invalid_observation):
+    from recipes.oracle import SimulationObservationError
+
+    state_dir = tmp_path / "state"
+    simulation_dir = tmp_path / "simulation"
+    oracle = Oracle(state_dir, simulation_dir=simulation_dir)
+    started = oracle.start(BRIEF, mode="simulation")
+    checkpoint = state_dir / f"{started.run_id}.json"
+    original = checkpoint.read_bytes()
+    payload = simulation_observation(started, 1, "waiting")
+    if invalid_observation == "malformed_json":
+        raw = b'{"private-canary":'
+    else:
+        if invalid_observation == "unknown_field":
+            payload["unexpected"] = "private-canary"
+        elif invalid_observation == "wrong_run":
+            payload["run_id"] = str(uuid4())
+        elif invalid_observation == "wrong_reference":
+            payload["reference"] = "sim:" + str(uuid4())
+        elif invalid_observation == "wrong_artifact":
+            payload["artifact_id"] = "0" * 64
+        elif invalid_observation == "wrong_scope":
+            payload["scope"] = ["other"]
+        elif invalid_observation == "stale_revision":
+            payload["revision"] = 0
+        elif invalid_observation == "revision_gap":
+            payload["revision"] = 2
+        elif invalid_observation == "invalid_review":
+            payload["kind"] = "review"
+            payload["feedback"] = {"rationale": "private-canary"}
+        elif invalid_observation == "conflicting_payload":
+            payload["question"] = "Conflicts with waiting kind."
+        elif invalid_observation == "null_waiting_question":
+            payload["question"] = None
+        elif invalid_observation == "null_waiting_feedback":
+            payload["feedback"] = None
+        elif invalid_observation == "null_clarification_feedback":
+            payload = simulation_observation(started, 1, "clarification", question="Buyer?")
+            payload["feedback"] = None
+        elif invalid_observation == "null_review_question":
+            payload = simulation_observation(
+                started, 1, "review", feedback=simulation_review(started)
+            )
+            payload["question"] = None
+        elif invalid_observation == "oversized":
+            payload["padding"] = "x" * 66_000
+        raw = json.dumps(payload).encode("utf-8")
+    folder = simulation_dir / "runs" / started.simulation_ref.removeprefix("sim:") / "observations"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / f"{1:020d}.json").write_bytes(raw)
+
+    with pytest.raises(SimulationObservationError) as error:
+        oracle.resume(started.run_id)
+
+    assert error.value.code == "simulation_observation_invalid"
+    assert "private-canary" not in str(error.value)
+    assert checkpoint.read_bytes() == original
+
+
+@pytest.mark.parametrize("question", ["private-canary\ud800", "private-canary\udfff"])
+@pytest.mark.parametrize("location", ["question", "scope", "key", "feedback", "nested_key"])
+def test_simulation_rejects_lone_surrogates_without_rewriting_checkpoint(
+    tmp_path, question, location
+):
+    from recipes.oracle import SimulationObservationError
+
+    state_dir = tmp_path / "state"
+    simulation_dir = tmp_path / "simulation"
+    oracle = Oracle(state_dir, simulation_dir=simulation_dir)
+    started = oracle.start(BRIEF, mode="simulation")
+    checkpoint = state_dir / f"{started.run_id}.json"
+    original = checkpoint.read_bytes()
+    payload = simulation_observation(started, 1, "clarification", question=question)
+    if location == "scope":
+        payload["question"] = "Buyer?"
+        payload["scope"] = [question]
+    elif location == "key":
+        payload[question] = payload.pop("question")
+    elif location in {"feedback", "nested_key"}:
+        feedback = simulation_review(started)
+        if location == "feedback":
+            feedback["comments"] = [question]
+        else:
+            feedback["comments"] = [{question: ["Synthetic"]}]
+        payload = simulation_observation(started, 1, "review", feedback=feedback)
+    publish_simulation_observation(simulation_dir, started, payload)
+
+    with pytest.raises(SimulationObservationError) as error:
+        oracle.resume(started.run_id)
+
+    assert error.value.code == "simulation_observation_invalid"
+    assert str(error.value) == "Local simulation observation is invalid"
+    assert checkpoint.read_bytes() == original
+    assert oracle.inspect(started.run_id) == started
+
+
+@pytest.mark.parametrize("text", ["Caf\u00e9 \U0001f642", "x\u0000y"])
+@pytest.mark.parametrize("escaped", [False, True])
+@pytest.mark.parametrize("kind", ["clarification", "review"])
+def test_simulation_preserves_valid_unicode_through_resume_and_restart(
+    tmp_path, text, escaped, kind
+):
+    state_dir = tmp_path / "state"
+    simulation_dir = tmp_path / "simulation"
+    oracle = Oracle(state_dir, simulation_dir=simulation_dir)
+    started = oracle.start(BRIEF, mode="simulation")
+    if kind == "clarification":
+        payload = simulation_observation(started, 1, kind, question=text)
+    else:
+        feedback = simulation_review(started)
+        feedback["comments"] = [text]
+        payload = simulation_observation(started, 1, kind, feedback=feedback)
+    path = publish_simulation_observation(simulation_dir, started, payload)
+    path.write_bytes(json.dumps(payload, ensure_ascii=escaped).encode("utf-8"))
+
+    accepted = oracle.resume(started.run_id)
+
+    assert accepted.simulation_revision == 1
+    if kind == "clarification":
+        assert accepted.question == text
+    else:
+        assert accepted.feedback.comments == (text,)
+    assert Oracle(state_dir, simulation_dir=simulation_dir).inspect(started.run_id) == accepted
+
+
+def test_simulation_observation_read_is_bounded_to_limit_plus_one(tmp_path, monkeypatch):
+    state_dir = tmp_path / "state"
+    simulation_dir = tmp_path / "simulation"
+    oracle = Oracle(state_dir, simulation_dir=simulation_dir)
+    started = oracle.start(BRIEF, mode="simulation")
+    folder = simulation_dir / "runs" / started.simulation_ref.removeprefix("sim:") / "observations"
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"{1:020d}.json"
+    path.write_bytes(b" " * 65_537)
+    original_open = type(path).open
+    read_sizes = []
+
+    class ReadProbe:
+        def __init__(self, wrapped):
+            self.wrapped = wrapped
+
+        def __enter__(self):
+            self.wrapped.__enter__()
+            return self
+
+        def __exit__(self, *args):
+            return self.wrapped.__exit__(*args)
+
+        def read(self, size=-1):
+            read_sizes.append(size)
+            return self.wrapped.read(size)
+
+    def probed_open(target, *args, **kwargs):
+        handle = original_open(target, *args, **kwargs)
+        if target == path and args and args[0] == "rb":
+            return ReadProbe(handle)
+        return handle
+
+    monkeypatch.setattr(type(path), "open", probed_open)
+    from recipes.oracle import SimulationObservationError
+
+    with pytest.raises(SimulationObservationError):
+        oracle.resume(started.run_id)
+
+    assert read_sizes == [65_537]
 
 
 @pytest.mark.parametrize(
@@ -416,6 +819,74 @@ def test_cli_exposes_the_same_persisted_start_and_inspect(tmp_path):
     )
     assert inspected.returncode == 0, inspected.stderr
     assert json.loads(inspected.stdout) == snapshot
+
+
+def test_cli_simulation_uses_the_configured_local_mailbox(tmp_path):
+    import subprocess
+    import sys
+    from types import SimpleNamespace
+
+    state_dir = tmp_path / "state"
+    simulation_dir = tmp_path / "simulation"
+    command = [
+        sys.executable,
+        "-m",
+        "recipes.oracle",
+        "--state-dir",
+        str(state_dir),
+        "--simulation-dir",
+        str(simulation_dir),
+    ]
+    started_result = subprocess.run(
+        command + ["start", "--brief", BRIEF, "--mode", "simulation"],
+        capture_output=True,
+        text=True,
+    )
+    assert started_result.returncode == 0, started_result.stderr
+    started = json.loads(started_result.stdout)
+    publish_simulation_observation(
+        simulation_dir,
+        SimpleNamespace(**started),
+        simulation_observation(SimpleNamespace(**started), 1, "clarification", question="Buyer?"),
+    )
+
+    resumed = subprocess.run(
+        command + ["resume", started["run_id"]], capture_output=True, text=True
+    )
+
+    assert resumed.returncode == 0, resumed.stderr
+    assert json.loads(resumed.stdout)["status"] == "needs_input"
+    assert json.loads(resumed.stdout)["simulation_revision"] == 1
+
+
+def test_cli_reports_invalid_configured_simulation_request_as_invalid(tmp_path):
+    import subprocess
+    import sys
+
+    state_dir = tmp_path / "state"
+    simulation_dir = tmp_path / "simulation"
+    command = [
+        sys.executable,
+        "-m",
+        "recipes.oracle",
+        "--state-dir",
+        str(state_dir),
+        "--simulation-dir",
+        str(simulation_dir),
+        "start",
+        "--brief",
+        BRIEF,
+        "--mode",
+        "simulation",
+        "--replay-case",
+        "fail",
+    ]
+
+    invalid = subprocess.run(command, capture_output=True, text=True)
+
+    assert invalid.returncode == 2
+    assert json.loads(invalid.stdout) == {"error": "invalid_request_or_checkpoint"}
+    assert not state_dir.exists()
 
 
 def test_cli_selects_a_replay_case_and_reports_selector_errors(tmp_path):

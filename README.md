@@ -31,6 +31,8 @@ uv run --no-sync terac-oracle resume RUN_ID
 The default case pauses for a scripted clarification, then delivers
 `inconclusive` feedback. Inspection reads saved state; resumption advances it.
 The [Oracle guide](docs/recipes/oracle.md) also covers pass, fail and linked work.
+Its [opt-in simulation walkthrough](docs/recipes/oracle.md#opt-in-to-local-simulation)
+rehearses independent synthetic delivery through a private local operator mailbox.
 
 On Windows, the complete synthetic walkthrough is:
 

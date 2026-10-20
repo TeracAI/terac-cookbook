@@ -19,6 +19,7 @@ An optional [local MCP adapter](mcp.md) exposes that same caller interface.
 | Runner | Run identity, lifecycle and explicit progression |
 | Checkpoint storage | Saved local state and validated reload |
 | Replay adapter | Synthetic events and controlled scheduling |
+| Simulation mailbox adapter | Bounded reads of explicitly configured, operator-published synthetic observations |
 | Future provider adapter | Authentication, transport, provider identities and verified work-content mapping |
 
 The runner does not interpret GTM feedback. Oracle does not own transport or
@@ -35,7 +36,7 @@ A second working Recipe can justify additional shared behavior.
 | `start` | Bind an exact input to a new run and save its initial waiting state |
 | `inspect` | Read waiting, clarification, feedback or failure without advancing |
 | `respond` | Save an answer to the current clarification without releasing another event |
-| `resume` | Reattach and release at most one replay event; paused or terminal work returns saved state |
+| `resume` | Reattach and release at most one replay event or observe the next simulation revision; paused or terminal work returns saved state |
 
 Linked work is another `start`, carrying `parent_id` and an explicit `follow_up`
 or `new_query` intent. It creates fresh work, preserves the parent and does not
@@ -51,7 +52,8 @@ defines the meaning of its result.
 
 For Oracle, a `succeeded` run means validated feedback was delivered. That review
 can recommend `pass`, `fail` or `inconclusive`. Malformed feedback or a wrong
-artifact/scope binding causes workflow failure rather than becoming a review.
+artifact/scope binding is never delivered as a review. Replay records workflow
+failure; simulation rejects the observation without changing the saved run.
 
 Keep these facts separate: run completion, expert delivery, recommendation,
 caller revision, and provider labor/payment state. A changed artifact has no
@@ -59,7 +61,7 @@ inherited verdict. Feedback grants no authority for further effects.
 
 ## Replay, restart and compatibility
 
-Each run pins its replay case, checkpoint/recipe/fixture versions and a semantic
+Each replay run pins its case, checkpoint/recipe/fixture versions and a semantic
 fixture digest. A linked lineage validates each ancestor against its own pin.
 Whitespace and JSON object-key order do not change fixture identity; changed
 events, cases or versions do.
@@ -68,6 +70,15 @@ Restart uses the same state directory and run identifier. Reload checks identity
 scope, lifecycle, replay position and lineage before returning state. Legacy,
 unsupported or altered checkpoints return `checkpoint_incompatible` without
 rewriting or silently migrating saved bytes.
+
+Opt-in simulation uses a separate version 2 checkpoint with an opaque synthetic
+reference, last accepted local revision and observation digest. It has no replay
+fixture pins. Oracle owns exact artifact/scope and feedback validation; the mailbox
+owns bounded transport reads; the runner owns saved lifecycle progression.
+Only explicit resume observes one next message. Inspect and respond do not
+observe it. Missing input preserves bytes; malformed input returns a sanitized
+error without committing progress. The [operator contract](recipes/oracle.md#opt-in-to-local-simulation)
+requires append-only atomic publication; accepted history is not audited.
 
 Storage uses atomic replacement of local plaintext JSON and supports one process
 at a time. Concurrent writers, encryption, expiry, automatic retries, cancellation,
@@ -80,14 +91,15 @@ a provider such as Terac. These directions have distinct authentication and
 deployment responsibilities.
 
 The baseline exposes inbound Python, CLI and optional local-stdio MCP calls,
-with replay as its only runner adapter. Live selection is rejected. Credentials
+with replay as default and an explicitly configured local simulation adapter.
+Live selection is rejected. Credentials
 alone never select live operation or establish content compatibility.
 
 The MCP process owns protocol schemas, bounded error responses and serialization
 within one process. It exposes `cookbook_list_recipes` and `oracle_start`,
 `oracle_inspect`, `oracle_respond`, `oracle_resume`. It calls Oracle's existing
 methods; it adds no second execution model. Discovery reports Oracle and replay
-availability without reading or advancing runs.
+and configured simulation availability without reading or advancing runs.
 
 Inbound Cookbook MCP is separate from outbound Terac MCP/REST and the provider's
 hosted connector. This process makes no provider requests and reads no provider

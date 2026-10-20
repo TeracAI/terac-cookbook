@@ -16,6 +16,8 @@ from recipes.oracle import (
     InvalidReplayCaseError,
     Oracle,
     ReplayCaseUnavailableError,
+    SimulationObservationError,
+    SimulationUnavailableError,
     Snapshot,
 )
 from runtime.runner import CheckpointIncompatibleError
@@ -63,9 +65,9 @@ class CookbookMCP(FastMCP):
             _request_arguments.reset(token)
 
 
-def create_server(state_dir: Path) -> FastMCP:
+def create_server(state_dir: Path, *, simulation_dir: Path | None = None) -> FastMCP:
     server = CookbookMCP("Terac Cookbook", log_level="ERROR")
-    oracle = Oracle(state_dir)
+    oracle = Oracle(state_dir, simulation_dir=simulation_dir)
     run_lock = anyio.Lock()
 
     async def invoke(
@@ -77,6 +79,8 @@ def create_server(state_dir: Path) -> FastMCP:
             except CheckpointIncompatibleError as exc:
                 return tool_result({"error": exc.code}, is_error=True)
             except (InvalidReplayCaseError, ReplayCaseUnavailableError) as exc:
+                return tool_result({"error": exc.code}, is_error=True)
+            except (SimulationObservationError, SimulationUnavailableError) as exc:
                 return tool_result({"error": exc.code}, is_error=True)
             except ValueError:
                 return tool_result({"error": invalid_error}, is_error=True)
@@ -91,7 +95,7 @@ def create_server(state_dir: Path) -> FastMCP:
                 {
                     "id": "oracle",
                     "name": "Oracle",
-                    "modes": ["replay"],
+                    "modes": ["replay", "simulation"] if simulation_dir is not None else ["replay"],
                     "live_available": False,
                     **oracle.replay_metadata,
                 }
@@ -106,7 +110,7 @@ def create_server(state_dir: Path) -> FastMCP:
         intent: str = "review",
         replay_case: str | None = None,
     ) -> CallToolResult:
-        """Start replay review or linked follow_up/new_query; live is unavailable."""
+        """Start replay or configured local simulation; live is unavailable."""
         # SDK v1 pre-parses optional strings, including the literal string "null".
         parent_id = _request_arguments.get().get("parent_id", parent_id)
         replay_case = _request_arguments.get().get("replay_case", replay_case)
@@ -140,12 +144,15 @@ def create_server(state_dir: Path) -> FastMCP:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Cookbook local replay MCP over stdio")
+    parser = argparse.ArgumentParser(description="Cookbook local Oracle MCP over stdio")
     parser.add_argument("--state-dir", type=Path, required=True)
+    parser.add_argument("--simulation-dir", type=Path)
     args = parser.parse_args()
     if not args.state_dir.is_absolute():
         parser.error("--state-dir must be absolute")
-    create_server(args.state_dir).run(transport="stdio")
+    if args.simulation_dir is not None and not args.simulation_dir.is_absolute():
+        parser.error("--simulation-dir must be absolute")
+    create_server(args.state_dir, simulation_dir=args.simulation_dir).run(transport="stdio")
     return 0
 
 

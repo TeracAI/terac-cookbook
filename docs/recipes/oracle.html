@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../assets/site.css">
 </head>
 <body>
-<!-- source: docs/recipes/oracle.md; source-sha256: c966bfb24554f44988c244bb93fd02d21566caa47b6c7fcdd0ce2b7c46f65802 -->
+<!-- source: docs/recipes/oracle.md; source-sha256: 002c03fb30a9a642d6c7c9e9ef9a2afdea9b77027bfc7888ee18ea7e3da34b24 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -42,9 +42,10 @@ or expert spend. Live expert fulfillment is unavailable.</p>
 <strong>willingness to pay</strong>, and <strong>channel fit</strong>. State which claims are supported,
 which remain hypotheses and what evidence is available.</p>
 <p>Every snapshot returns <code>run_id</code>, <code>parent_id</code>, <code>intent</code>, <code>artifact_id</code>, <code>brief</code>,
-<code>scope</code>, <code>mode</code>, <code>replay_case</code>, <code>status</code>, <code>phase</code>, <code>question</code>, <code>feedback</code> and
+<code>scope</code>, <code>mode</code>, <code>status</code>, <code>phase</code>, <code>question</code>, <code>feedback</code> and
 <code>error</code>. The exact brief text determines its artifact identity; each execution
-has a distinct run identity.</p>
+has a distinct run identity. Replay adds <code>replay_case</code>; opt-in simulation adds
+<code>simulation_ref</code> and <code>simulation_revision</code> instead.</p>
 <p>Feedback carries the reviewed identity/scope, recommendation, rationale, material
 findings, advisory comments, limitations, next steps and synthetic provenance.
 The <a href="../../recipes/oracle/review-contract.md">feedback contract</a> defines its
@@ -146,7 +147,7 @@ clarification; linked <code>start</code> opens new work. No real-expert continui
 state directory, place <code>--state-dir PATH</code> before the action on every invocation:</p>
 <pre><code class="language-sh">uv run --no-sync terac-oracle --state-dir .tmp/my-oracle inspect RUN_ID
 </code></pre>
-<p>Each checkpoint pins its case, checkpoint/recipe/fixture versions and semantic
+<p>Each replay checkpoint pins its case, checkpoint/recipe/fixture versions and semantic
 fixture digest. Every linked ancestor uses its own saved pin. Unsupported,
 legacy or changed pins return <code>checkpoint_incompatible</code> without rewriting saved
 state. There is no automatic migration.</p>
@@ -164,12 +165,80 @@ a known case unavailable to an injected replay adapter returns
 <code>replay_case_unavailable</code>. Invalid checkpoints return <code>checkpoint_incompatible</code>.
 The CLI reports these runtime rejections as a JSON error and exits with status 2.</p>
 <p>Schema validation and exact artifact/scope binding precede feedback delivery.
-Malformed or mismatched events cause workflow failure. A material finding cannot
+Malformed or mismatched replay events cause workflow failure. A material finding cannot
 accompany <code>pass</code>.</p>
 <p>Replay stays default regardless of credentials; <code>--mode live</code> is rejected as
 <code>live_unavailable</code>. Disclosure, recruitment, spend, follow-up, payment, rejection
 and publication require declared authority. Feedback cannot grant it. Do not
 commit local checkpoints, private briefs or confidential responses.</p>
+<h2 id="opt-in-to-local-simulation">Opt in to local simulation</h2>
+<p>Simulation rehearses independently delivered observations through the same four
+actions. It is synthetic, local and explicitly selected. Replay remains the
+default even when simulation is configured or credentials exist. It establishes
+no Terac transport, expert delivery or provider-schema compatibility.</p>
+<p>Python configures <code>Oracle(state_dir, simulation_dir=mailbox_dir)</code>. CLI users
+place the absolute mailbox path before the action, then select simulation on
+start. Use the same two directories on subsequent commands:</p>
+<pre><code class="language-sh">terac-oracle --state-dir ABSOLUTE_PRIVATE_STATE --simulation-dir ABSOLUTE_PRIVATE_MAILBOX start --mode simulation --brief &quot;Synthetic repair-shop channel hypothesis.&quot;
+terac-oracle --state-dir ABSOLUTE_PRIVATE_STATE --simulation-dir ABSOLUTE_PRIVATE_MAILBOX inspect RUN_ID
+terac-oracle --state-dir ABSOLUTE_PRIVATE_STATE --simulation-dir ABSOLUTE_PRIVATE_MAILBOX resume RUN_ID
+</code></pre>
+<p>Replace the absolute-path placeholders and <code>RUN_ID</code> with your local values.
+Without mailbox configuration, simulation start returns
+<code>simulation_unavailable</code> and creates no checkpoint. A simulation run cannot
+select <code>replay_case</code>. Live remains unavailable in every configuration.</p>
+<p>Start saves revision 0 and a <code>sim:&lt;uuid&gt;</code> reference. The operator or test harness
+publishes observations out of band; normal callers only invoke the four actions.
+Keep mailbox messages and checkpoints private and outside tracked files.
+There is no operator publication MCP tool or automatic response generator.</p>
+<p>The operator uses the UUID after <code>sim:</code> to form this path:</p>
+<pre><code class="language-text">&lt;simulation-dir&gt;/runs/&lt;uuid&gt;/observations/&lt;revision:020d&gt;.json
+</code></pre>
+<p>An observation is UTF-8 JSON, at most 65,536 bytes. Copy the exact run ID,
+reference, artifact ID and scope from the snapshot. Choose the next positive
+revision, starting at 1. For example, a waiting observation is:</p>
+<pre><code class="language-json">{
+  &quot;run_id&quot;: &quot;COPY_RUN_ID&quot;,
+  &quot;reference&quot;: &quot;sim:COPY_REFERENCE_UUID&quot;,
+  &quot;artifact_id&quot;: &quot;COPY_ARTIFACT_SHA256&quot;,
+  &quot;scope&quot;: [&quot;buyer_pain&quot;, &quot;willingness_to_pay&quot;, &quot;channel_fit&quot;],
+  &quot;revision&quot;: 1,
+  &quot;kind&quot;: &quot;waiting&quot;
+}
+</code></pre>
+<p>Publish by writing a temporary file in the observation directory, closing it,
+then atomically moving it to the final zero-padded revision filename with a
+no-overwrite operation. On Windows, <code>[System.IO.File]::Move($temporary, $final)</code>
+uses this behavior. Create the directory first; both variables must name files
+in that directory. An existing final filename must fail publication even when
+the bytes are identical. Do not write directly to a final filename or replace
+published observations.</p>
+<p>For a clarification, set <code>kind</code> to <code>clarification</code> and add a nonempty
+<code>question</code>. For delivery, set <code>kind</code> to <code>review</code> and add a <code>feedback</code> object
+following the <a href="../../recipes/oracle/review-contract.md">feedback contract</a>, with
+the exact artifact/scope and <code>provenance: "synthetic"</code>. Waiting has neither
+payload field; clarification has no <code>feedback</code>; review has no <code>question</code>.
+Omit unused fields entirely, including null-valued fields. Unknown fields,
+duplicate JSON keys and nonfinite numbers are rejected.</p>
+<p>Each explicit resume reads only the expected next revision. A missing file is
+an unchanged snapshot and unchanged checkpoint; later files are not scanned.
+An accepted waiting observation stays working; clarification pauses until
+<code>respond</code> records an answer; validated review delivery succeeds. <code>respond</code>
+records the answer locally without reading or writing the mailbox. The operator
+independently chooses the next synthetic observation. Inspection, unanswered
+clarification and terminal resume read no observation.</p>
+<p>Malformed, oversized, incorrectly bound or out-of-sequence observations return
+<code>simulation_observation_invalid</code> without changing checkpoint bytes. Errors omit
+raw payloads and local paths. Correct unpublished input before publication;
+if a malformed final file was published, preserve it as private evidence and
+start a fresh run rather than overwriting history. Accepted files are not reread
+or audited; append-only publication is a trusted operator responsibility.</p>
+<p>Simulation checkpoint version 2 retains the last accepted revision, observation
+digest and lifecycle facts, without replay fixture pins. Replay version 1 retains
+its existing shape. Restart uses the same run ID, state directory and mailbox;
+there is no implicit migration. Simulation feedback proves software behavior
+with operator-authored synthetic content, not real expert judgment. Recorded
+responses still require rights and privacy clearance before fixture publication.</p>
 <p><a href="../architecture.html">Architecture</a> explains shared state and adapter boundaries.
 <a href="../contributing.html">Contributing</a> describes offline testing and new Recipes.</p>
       </div>
@@ -186,6 +255,7 @@ commit local checkpoints, private briefs or confidential responses.</p>
 <li><a href="#decide-what-comes-next">Decide what comes next</a></li>
 <li><a href="#restart-and-updates">Restart and updates</a></li>
 <li><a href="#errors-and-effects">Errors and effects</a></li>
+<li><a href="#opt-in-to-local-simulation">Opt in to local simulation</a></li>
 </ul>
 </div>
     </nav>
