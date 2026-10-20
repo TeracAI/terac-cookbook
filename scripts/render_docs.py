@@ -45,7 +45,16 @@ SVG_ATTRIBUTES = {
     "svg": {"viewBox", "role", "aria-labelledby"},
     **{tag: set() for tag in ("title", "desc", "defs", "style")},
     "marker": {"markerWidth", "markerHeight", "refX", "refY", "orient"},
-    "path": {"d", "fill", "stroke", "stroke-width", "stroke-dasharray", "marker-end"},
+    "path": {
+        "d",
+        "fill",
+        "fill-rule",
+        "clip-rule",
+        "stroke",
+        "stroke-width",
+        "stroke-dasharray",
+        "marker-end",
+    },
     "rect": {
         "x",
         "y",
@@ -228,6 +237,9 @@ def svg_document(text, source):
             raise ValueError(f"{source.as_posix()}: unsupported SVG element")
         if set(element.attrib) - SVG_ATTRIBUTES[tag] - {"id", "class"}:
             raise ValueError(f"{source.as_posix()}: unsupported SVG attribute")
+        for name in ("fill-rule", "clip-rule"):
+            if name in element.attrib and element.get(name) not in {"evenodd", "nonzero"}:
+                raise ValueError(f"{source.as_posix()}: unsupported SVG fill rule")
         if element.get("id"):
             document.ids.add(element.get("id"))
         for value in element.attrib.values():
@@ -312,6 +324,7 @@ def render_page(root, source, output, mapping, version):
     )
     home = relative_url(root / "docs/index.html", root / output.parent)
     stylesheet = relative_url(root / "docs/assets/site.css", root / output.parent)
+    brand_mark = relative_url(root / "docs/assets/terac-icon.svg", root / output.parent)
     source_url = relative_url(root / source, root / output.parent)
     toc = converter.toc.replace('<div class="toc">', "<div>", 1).strip()
     digest = hashlib.sha256(source_bytes).hexdigest()
@@ -328,7 +341,9 @@ def render_page(root, source, output, mapping, version):
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
-    <a class="brand" href="{home}">Terac Cookbook</a>
+    <a class="brand" href="{home}">
+      <img class="brand-mark" src="{brand_mark}" width="24" height="24" alt="">Terac Cookbook
+    </a>
     <nav class="site-nav" aria-label="Main navigation">
 {nav}
     </nav>
@@ -372,7 +387,12 @@ def main():
         for source, output in OPTIONAL_PAGES.items():
             if (root / source).is_file():
                 mapping[source] = output
-        for name in [*mapping, "pyproject.toml", "docs/assets/site.css"]:
+        for name in [
+            *mapping,
+            "pyproject.toml",
+            "docs/assets/site.css",
+            "docs/assets/terac-icon.svg",
+        ]:
             if not (root / name).is_file():
                 raise ValueError(f"missing required source or asset: {name}")
         version = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"][
