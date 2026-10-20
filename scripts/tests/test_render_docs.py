@@ -16,6 +16,11 @@ class RenderDocsTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.write("pyproject.toml", '[project]\nname = "example"\nversion = "0.1.7"\n')
         self.write("docs/assets/site.css", "body { color: black; }\n")
+        self.write(
+            "docs/assets/terac-icon.svg",
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
+            '<path fill-rule="evenodd" clip-rule="evenodd" d="M0 0 L9 9"/></svg>\n',
+        )
         self.write("docs/index.md", "# Cookbook\n\n## Start here\n\nWelcome.\n")
         self.write("docs/architecture.md", "# Architecture\n\n## Runner\n\nLocal replay.\n")
         self.write("docs/recipes/index.md", "# Recipes\n\n[Oracle](oracle.md)\n")
@@ -54,12 +59,29 @@ class RenderDocsTests(unittest.TestCase):
         self.assertIn('href="../recipes/oracle/review-contract.md"', page)
         self.assertIn('src="assets/diagram.svg"', page)
         self.assertIn('href="assets/site.css"', page)
+        self.assertIn('src="assets/terac-icon.svg"', page)
+        nested = (self.root / "docs/recipes/oracle.html").read_text(encoding="utf-8")
+        self.assertIn('src="../assets/terac-icon.svg"', nested)
         self.assertIn('<code class="language-python">', page)
         self.assertIn("<table>", page)
         self.assertIn("0.1.7", page)
         self.assertIn("source-sha256:", page)
         self.assertNotIn(str(self.root), page)
         self.assertTrue((self.root / "docs/recipes/oracle.html").is_file())
+
+    def test_brand_asset_rejects_nonstatic_fill_rules_before_writing(self):
+        for attribute in ("fill-rule", "clip-rule"):
+            with self.subTest(attribute=attribute):
+                self.write(
+                    "docs/assets/terac-icon.svg",
+                    '<svg xmlns="http://www.w3.org/2000/svg">'
+                    f'<path {attribute}="url(https://example.invalid/a)" d="M0 0"/>'
+                    "</svg>",
+                )
+                result = self.run_builder()
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("unsupported SVG fill rule", result.stdout)
+                self.assertFalse((self.root / "docs/index.html").exists())
 
     def test_check_detects_drift_and_missing_output_without_writing(self):
         result = self.run_builder()

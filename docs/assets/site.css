@@ -1,14 +1,14 @@
 /* Local, script-free reading views for the canonical Cookbook Markdown. */
 :root {
   color-scheme: light;
-  --paper: #f7f6f0;
-  --surface: #fffef9;
-  --ink: #193b3d;
-  --muted: #546967;
-  --teal: #086e70;
-  --teal-dark: #07585a;
-  --tint: #e5efea;
-  --line: #cedbd4;
+  --paper: #FFFFF0;
+  --surface: #FFFFFF;
+  --ink: #1A1A1A;
+  --muted: #606060;
+  --teal: #0A06F7;
+  --teal-dark: #0006B7;
+  --tint: #DFE6FD;
+  --line: #d5dbef;
   --code: #143436;
   --code-text: #f0f5ed;
   --measure: 48rem;
@@ -35,7 +35,7 @@ a:focus-visible, button:focus-visible {
   outline-offset: 5px;
   border-radius: 2px;
 }
-::selection { background: #c6e2d6; color: var(--ink); }
+::selection { background: var(--tint); color: var(--ink); }
 
 .skip-link {
   position: absolute;
@@ -69,13 +69,17 @@ body > header, .site-header {
   font-size: 1.05rem;
   letter-spacing: -.025em;
 }
-.brand::before, .site-title::before {
-  content: "";
-  display: inline-block;
-  width: .7rem;
-  height: .7rem;
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+}
+.brand-mark {
+  width: 24px;
+  height: 24px;
+  padding: 3px;
+  flex: none;
   background: var(--teal);
-  margin-right: .6rem;
   border-radius: 2px;
 }
 .site-nav, .site-header nav {
