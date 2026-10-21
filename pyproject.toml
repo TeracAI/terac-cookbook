@@ -2,6 +2,8 @@
 name = "terac-cookbook"
 version = "0.2.0.dev1"
 description = "Runnable examples of agents working with expert feedback"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = ["pydantic>=2.12,<3"]
 
@@ -23,7 +25,7 @@ build-backend = "hatchling.build"
 packages = ["runtime", "adapters", "recipes"]
 
 [tool.hatch.build.targets.sdist]
-include = ["runtime/", "adapters/", "recipes/", "pyproject.toml", "uv.lock", "README.md", "CONTRIBUTING.md", "docs/"]
+include = ["runtime/", "adapters/", "recipes/", "pyproject.toml", "uv.lock", "README.md", "CONTRIBUTING.md", "docs/", "LICENSE"]
 
 [tool.pytest.ini_options]
 testpaths = ["scripts/tests", "tests"]
