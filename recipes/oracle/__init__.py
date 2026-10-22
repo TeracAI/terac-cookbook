@@ -1,33 +1,36 @@
 """Oracle's public caller interface for synthetic GTM expert review."""
 
+import hashlib
 import json
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
 from typing import Literal
-from uuid import uuid4
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    ValidationError,
-    model_serializer,
     model_validator,
 )
 
 from adapters.replay import ReplayAdapter
-from adapters.simulation_mailbox import (
-    MailboxRead,
-    SimulationMailbox,
-    SimulationObservationError,
-    SimulationUnavailableError,
+from runtime.runner import (
+    RECIPE_CHECKPOINT_VERSION,
+    CheckpointIncompatibleError,
+    Runner,
+    RunState,
 )
-from runtime.runner import CHECKPOINT_VERSION, CheckpointIncompatibleError, Runner, RunState
 
 REVIEW_SCOPE = ("buyer_pain", "willingness_to_pay", "channel_fit")
 RECIPE_CONTRACT_VERSION = 1
 PACKAGED_CASE_IDS = {"pass_with_comments", "fail", "inconclusive"}
+_PHASE_BY_STATUS = {
+    "working": "waiting_for_expert",
+    "needs_input": "awaiting_clarification",
+    "succeeded": "feedback_available",
+    "failed": "invalid_event",
+}
 
 
 class InvalidReplayCaseError(ValueError):
@@ -53,6 +56,30 @@ class _ReplayCase:
     fixture_version: int
     digest: str
     adapter: ReplayAdapter
+
+
+@dataclass(frozen=True)
+class OracleRunView:
+    """Oracle's typed view of current recipe and adapter progress payloads."""
+
+    run_id: str
+    parent_id: str | None
+    intent: str
+    mode: str
+    recipe_contract_version: int
+    artifact_id: str
+    brief: str
+    scope: tuple[str, ...]
+    status: str
+    phase: str
+    question: str | None
+    feedback: dict | None
+    error: str | None
+    answer: str | None
+    cursor: int | None
+    replay_case: str | None
+    replay_fixture_version: int | None
+    replay_fixture_digest: str | None
 
 
 def _reject_nonfinite(value: str):
@@ -146,25 +173,13 @@ class Snapshot(BaseModel):
     artifact_id: str
     brief: str
     scope: tuple[str, ...]
-    mode: Literal["replay", "simulation"]
+    mode: Literal["replay"]
     replay_case: str | None = None
-    simulation_ref: str | None = None
-    simulation_revision: int | None = None
     status: Literal["working", "needs_input", "succeeded", "failed"]
     phase: str
     question: str | None
     feedback: Review | None
     error: str | None
-
-    @model_serializer(mode="wrap")
-    def serialize_mode_fields(self, handler):
-        data = handler(self)
-        if self.mode == "replay":
-            data.pop("simulation_ref", None)
-            data.pop("simulation_revision", None)
-        else:
-            data.pop("replay_case", None)
-        return data
 
 
 class Oracle:
@@ -173,23 +188,21 @@ class Oracle:
         state_dir: Path,
         *,
         replay: ReplayAdapter | None = None,
-        simulation_dir: Path | None = None,
     ):
         self._custom_replay = replay is not None
-        self._simulation_mailbox = SimulationMailbox(simulation_dir)
-        self._simulation_configured = simulation_dir is not None
         if replay is None:
             self._default_case, self._cases = _load_packaged_cases()
         else:
             self._default_case = "custom"
-            self._cases = {
-                "custom": self._custom_case(replay),
-            }
+            self._cases = {"custom": self._custom_case(replay)}
         self._runner = Runner(
             state_dir,
-            self._adapter_for_state,
+            self._transport_for_state,
             self._transition_for_event,
             self._validate_run,
+            recipe_id="oracle",
+            respond_for_state=self._respond_for_runner,
+            observation_error_for_state=self._observation_error_for_recipe_state,
         )
 
     @staticmethod
@@ -238,24 +251,94 @@ class Oracle:
             raise ReplayCaseUnavailableError()
         raise InvalidReplayCaseError()
 
-    def _adapter_for_state(self, state: RunState) -> ReplayAdapter | SimulationMailbox:
-        if state.mode == "simulation":
-            return self._simulation_mailbox
-        case = self._cases.get(state.replay_case)
-        if case is None:
-            raise CheckpointIncompatibleError()
+    @staticmethod
+    def _view(state: RunState) -> OracleRunView:
+        recipe = state.recipe_payload
+        adapter = state.adapter_payload
         if (
-            state.checkpoint_version != CHECKPOINT_VERSION
-            or state.cursor is None
-            or state.simulation_ref is not None
-            or state.simulation_revision is not None
-            or state.simulation_observation_digest is not None
+            state.checkpoint_version != RECIPE_CHECKPOINT_VERSION
+            or state.recipe_id != "oracle"
+            or state.recipe_contract_version != RECIPE_CONTRACT_VERSION
+            or not isinstance(recipe, dict)
+            or set(recipe) != {"brief", "scope", "artifact_id", "feedback", "answer"}
+            or not isinstance(recipe["brief"], str)
+            or not isinstance(recipe["scope"], list)
+            or any(not isinstance(item, str) for item in recipe["scope"])
+            or not isinstance(recipe["artifact_id"], str)
+            or len(recipe["artifact_id"]) != 64
+            or (recipe["feedback"] is not None and not isinstance(recipe["feedback"], dict))
+            or (recipe["answer"] is not None and not isinstance(recipe["answer"], str))
+            or not isinstance(adapter, dict)
+            or set(adapter)
+            != {"cursor", "replay_case", "replay_fixture_version", "replay_fixture_digest"}
+            or type(adapter["cursor"]) is not int
+            or adapter["cursor"] < 0
+            or not isinstance(adapter["replay_case"], str)
+            or not adapter["replay_case"]
+            or type(adapter["replay_fixture_version"]) is not int
+            or adapter["replay_fixture_version"] < 1
+            or not isinstance(adapter["replay_fixture_digest"], str)
+            or len(adapter["replay_fixture_digest"]) != 64
+            or state.mode != "replay"
+        ):
+            raise CheckpointIncompatibleError()
+        return OracleRunView(
+            run_id=state.run_id,
+            parent_id=state.parent_id,
+            intent=state.intent,
+            mode=state.mode,
+            recipe_contract_version=state.recipe_contract_version,
+            artifact_id=recipe["artifact_id"],
+            brief=recipe["brief"],
+            scope=tuple(recipe["scope"]),
+            status=state.status,
+            phase=state.phase,
+            question=state.question,
+            feedback=recipe["feedback"],
+            error=state.error,
+            answer=recipe["answer"],
+            cursor=adapter["cursor"],
+            replay_case=adapter["replay_case"],
+            replay_fixture_version=adapter["replay_fixture_version"],
+            replay_fixture_digest=adapter["replay_fixture_digest"],
+        )
+
+    def _adapter_for_state(self, state: RunState) -> ReplayAdapter:
+        view = self._view(state)
+        case = self._cases.get(view.replay_case)
+        if (
+            case is None
             or state.recipe_contract_version != case.recipe_contract_version
-            or state.replay_fixture_version != case.fixture_version
-            or state.replay_fixture_digest != case.digest
+            or view.replay_fixture_version != case.fixture_version
+            or view.replay_fixture_digest != case.digest
         ):
             raise CheckpointIncompatibleError()
         return case.adapter
+
+    def _transport_for_state(self, state: RunState):
+        return _OracleTransport(self, self._adapter_for_state(state))
+
+    @staticmethod
+    def _respond_for_runner(state: RunState, answer: object) -> dict:
+        if not isinstance(answer, str) or not answer.strip():
+            raise ValueError("A nonempty clarification answer is required")
+        Oracle._view(state)
+        recipe = dict(state.recipe_payload)
+        recipe["answer"] = answer
+        return {
+            "recipe_payload": recipe,
+            "question": None,
+            "status": "working",
+            "phase": "waiting_for_expert",
+        }
+
+    @staticmethod
+    def _observation_error_for_recipe_state(error: Exception, state: RunState) -> dict:
+        return {
+            "status": "failed",
+            "phase": "invalid_event",
+            "error": "invalid_provider_event",
+        }
 
     def start(
         self,
@@ -268,40 +351,33 @@ class Oracle:
     ) -> Snapshot:
         if mode == "live":
             raise ValueError("Live integration is unavailable")
-        if mode == "simulation":
-            if not self._simulation_configured:
-                raise SimulationUnavailableError()
-            if replay_case is not None:
-                raise ValueError("Replay case cannot be selected for simulation")
-        elif mode != "replay":
+        if mode != "replay":
             raise ValueError("Unsupported Oracle mode")
         if not isinstance(brief, str):
             raise ValueError("A GTM brief must be text")
         self._validate_intent(intent, parent_id)
-        if mode == "simulation":
-            return self._snapshot(
-                self._runner.start(
-                    brief,
-                    REVIEW_SCOPE,
-                    mode="simulation",
-                    intent=intent,
-                    parent_id=parent_id,
-                    recipe_contract_version=RECIPE_CONTRACT_VERSION,
-                    simulation_ref=f"sim:{uuid4()}",
-                )
-            )
+        recipe_payload = {
+            "brief": brief,
+            "scope": list(REVIEW_SCOPE),
+            "artifact_id": hashlib.sha256(brief.encode()).hexdigest(),
+            "feedback": None,
+            "answer": None,
+        }
         case = self._select_case(replay_case)
         return self._snapshot(
             self._runner.start(
-                brief,
-                REVIEW_SCOPE,
+                recipe_payload=recipe_payload,
+                adapter_payload={
+                    "cursor": 0,
+                    "replay_case": case.case_id,
+                    "replay_fixture_version": case.fixture_version,
+                    "replay_fixture_digest": case.digest,
+                },
                 mode="replay",
                 intent=intent,
                 parent_id=parent_id,
-                replay_case=case.case_id,
                 recipe_contract_version=case.recipe_contract_version,
-                replay_fixture_version=case.fixture_version,
-                replay_fixture_digest=case.digest,
+                phase="waiting_for_expert",
             )
         )
 
@@ -317,60 +393,16 @@ class Oracle:
         return self._snapshot(self._runner.respond(run_id, answer))
 
     @staticmethod
-    def _validate_review(feedback: dict, state: RunState) -> dict:
+    def _validate_review(feedback: dict, state: OracleRunView) -> dict:
         review = Review.model_validate(feedback)
         if review.artifact_id != state.artifact_id or review.scope != state.scope:
             raise ValueError("Review must bind to the exact brief and scope")
         return review.model_dump(mode="json")
 
-    @staticmethod
-    def _transition_for_event(event: dict | MailboxRead, state: RunState) -> dict:
-        if state.mode == "simulation":
-            if not isinstance(event, MailboxRead):
-                raise SimulationObservationError()
-            observation = event.observation
-            if (
-                observation.run_id != state.run_id
-                or observation.reference != state.simulation_ref
-                or observation.artifact_id != state.artifact_id
-                or observation.scope != state.scope
-                or observation.revision != state.simulation_revision + 1
-            ):
-                raise SimulationObservationError()
-            update = {
-                "simulation_revision": observation.revision,
-                "simulation_observation_digest": event.digest,
-            }
-            if observation.kind == "waiting":
-                return {
-                    **update,
-                    "status": "working",
-                    "phase": "waiting_for_expert",
-                    "question": None,
-                    "feedback": None,
-                }
-            if observation.kind == "clarification":
-                return {
-                    **update,
-                    "status": "needs_input",
-                    "phase": "awaiting_clarification",
-                    "question": observation.question,
-                    "answer": None,
-                    "feedback": None,
-                }
-            if observation.kind == "review":
-                try:
-                    feedback = Oracle._validate_review(observation.feedback, state)
-                except (ValidationError, ValueError) as exc:
-                    raise SimulationObservationError() from exc
-                return {
-                    **update,
-                    "status": "succeeded",
-                    "phase": "feedback_available",
-                    "feedback": feedback,
-                    "question": None,
-                }
-            raise SimulationObservationError()
+    def _transition_for_event(self, event: dict, state: RunState) -> dict:
+        view = self._view(state)
+        recipe = dict(state.recipe_payload)
+        adapter = dict(state.adapter_payload)
         if not isinstance(event, dict):
             raise ValueError("Replay event must be an object")
         if (
@@ -382,17 +414,17 @@ class Oracle:
                 "status": "needs_input",
                 "phase": "awaiting_clarification",
                 "question": event["question"],
-                "answer": None,
-                "cursor": state.cursor + 1,
+                "recipe_payload": {**recipe, "answer": None},
+                "adapter_payload": {**adapter, "cursor": view.cursor + 1},
             }
         if event.get("kind") == "review":
-            feedback = Oracle._validate_review(event.get("feedback", {}), state)
+            recipe["feedback"] = self._validate_review(event.get("feedback", {}), view)
             return {
                 "status": "succeeded",
                 "phase": "feedback_available",
-                "feedback": feedback,
                 "question": None,
-                "cursor": state.cursor + 1,
+                "recipe_payload": recipe,
+                "adapter_payload": {**adapter, "cursor": view.cursor + 1},
             }
         raise ValueError("Invalid replay event")
 
@@ -405,27 +437,52 @@ class Oracle:
 
     @staticmethod
     def _validate_run(state: RunState) -> None:
-        if not state.brief.strip() or state.scope != REVIEW_SCOPE:
-            raise ValueError("Oracle requires a nonempty brief and its exact GTM scope")
-        Oracle._validate_intent(state.intent, state.parent_id)
-        if state.recipe_contract_version != RECIPE_CONTRACT_VERSION:
-            raise CheckpointIncompatibleError()
-        if state.feedback is not None:
-            Oracle._validate_review(state.feedback, state)
+        view = Oracle._view(state)
+        if (
+            not view.brief.strip()
+            or view.scope != REVIEW_SCOPE
+            or view.artifact_id != hashlib.sha256(view.brief.encode()).hexdigest()
+        ):
+            raise ValueError("Oracle artifact or GTM scope is incompatible")
+        Oracle._validate_intent(view.intent, view.parent_id)
+        if view.phase != _PHASE_BY_STATUS[view.status] or (view.status == "succeeded") != (
+            view.feedback is not None
+        ):
+            raise ValueError("Oracle lifecycle does not match its phase and feedback")
+        if view.feedback is not None:
+            Oracle._validate_review(view.feedback, view)
 
     @staticmethod
     def _snapshot(state: RunState) -> Snapshot:
-        exclude = {
-            "cursor",
-            "answer",
-            "checkpoint_version",
-            "recipe_contract_version",
-            "replay_fixture_version",
-            "replay_fixture_digest",
-            "simulation_observation_digest",
-        }
-        if state.mode == "replay":
-            exclude.update({"simulation_ref", "simulation_revision"})
-        else:
-            exclude.add("replay_case")
-        return Snapshot.model_validate(state.model_dump(exclude=exclude))
+        view = Oracle._view(state)
+        return Snapshot(
+            run_id=view.run_id,
+            parent_id=view.parent_id,
+            intent=view.intent,
+            artifact_id=view.artifact_id,
+            brief=view.brief,
+            scope=view.scope,
+            mode=view.mode,
+            replay_case=view.replay_case,
+            status=view.status,
+            phase=view.phase,
+            question=view.question,
+            feedback=view.feedback,
+            error=view.error,
+        )
+
+
+class _OracleTransport:
+    """Adapts replay events to the shared Runner seam."""
+
+    def __init__(self, oracle: Oracle, adapter: ReplayAdapter):
+        self._oracle = oracle
+        self._adapter = adapter
+
+    def observe(self, state: RunState):
+        view = self._oracle._view(state)
+        return self._adapter.advance(view.cursor, view.artifact_id, view.scope)
+
+    def validate_progress(self, state: RunState) -> None:
+        view = self._oracle._view(state)
+        self._adapter.validate_progress(view.cursor, view.status, view.question, view.answer)

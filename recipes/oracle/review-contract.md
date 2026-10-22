@@ -21,8 +21,7 @@ verified provider payload schema.
 The typed snapshot returns tuple-backed feedback. Schema and exact artifact/scope
 binding are checked before delivery. A material finding cannot accompany `pass`.
 Malformed or mismatched content is never delivered as a recommendation. Replay
-records workflow failure; simulation rejects the observation without changing
-the saved run.
+records workflow failure without changing the saved run's delivered result.
 
 ## Recommendation meaning
 

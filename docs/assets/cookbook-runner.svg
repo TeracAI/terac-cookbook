@@ -1,69 +1,85 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 600" role="img" aria-labelledby="title desc">
-  <title id="title">Terac Cookbook responsibility boundaries</title>
-  <desc id="desc">A caller invokes a Recipe, which binds domain inputs and outputs. The shared runner owns identity and lifecycle, saves local checkpoints, and receives synthetic events from replay. A future live provider adapter is shown separately with a dashed boundary. The result returns to the caller for its next decision.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 700" role="img" aria-labelledby="title desc">
+  <title id="title">Terac Cookbook architecture and delivery seams</title>
+  <desc id="desc">Python and CLI callers invoke Oracle directly. Local stdio MCP callers use cookbook_app to register Oracle, the recipe catalog and MCP tools. Oracle uses the shared Runner, local checkpoints and replay. Separate operator diagnostics read Terac context without entering Oracle fulfillment. Later versions may add provider fulfillment only after its contract and authority are established.</desc>
   <defs>
-    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><path d="M0 0 8 4 0 8" fill="none" stroke="#086e70" stroke-width="1.6"/></marker>
-    <marker id="muted-arrow" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><path d="M0 0 8 4 0 8" fill="none" stroke="#687c75" stroke-width="1.6"/></marker>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 9 5 0 10" fill="none" stroke="#087b78" stroke-width="1.8"/></marker>
     <style>
-      text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #193b3d; }
-      .title { font-size: 27px; font-weight: 700; letter-spacing: -.7px; }
-      .label { font-size: 20px; font-weight: 700; }
-      .detail { font-size: 16px; fill: #546967; }
-      .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 1.9px; fill: #086e70; }
-      .line { fill: none; stroke: #086e70; stroke-width: 2; marker-end: url(#arrow); }
-      .box { fill: #fffef9; stroke: #b5cbc0; stroke-width: 1.5; }
+      text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #183b3d; }
+      .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 2px; fill: #087b78; }
+      .gold-eyebrow { fill: #9a6d17; }
+      .title { font-size: 27px; font-weight: 700; letter-spacing: -.55px; }
+      .sub { font-size: 15px; fill: #536a66; }
+      .label { font-size: 18px; font-weight: 700; }
+      .detail { font-size: 14px; fill: #536a66; }
+      .tiny { font-size: 12px; fill: #536a66; }
+      .card { fill: #fffef9; stroke: #bdcec6; stroke-width: 1.4; }
+      .teal { fill: #e6f2ed; stroke: #087b78; stroke-width: 1.5; }
+      .gold { fill: #fbf2db; stroke: #c99a3d; stroke-width: 1.4; }
+      .solid { fill: none; stroke: #087b78; stroke-width: 2; marker-end: url(#arrow); }
     </style>
   </defs>
-  <rect width="1120" height="600" fill="#fffef9"/>
-  <text x="42" y="45" class="eyebrow">TERAC COOKBOOK / LOCAL EXECUTION</text>
-  <text x="42" y="85" class="title">Domain meaning stays in the Recipe</text>
-  <text x="42" y="113" class="detail">The runner owns progress. Adapters supply events. The caller chooses what comes next.</text>
+  <rect width="1240" height="700" fill="#fffef9"/>
+  <text x="42" y="42" class="eyebrow">TERAC COOKBOOK · LOCAL EXECUTION</text>
+  <text x="42" y="82" class="title">Direct recipe calls. Explicit MCP composition.</text>
+  <text x="42" y="108" class="sub">Python and CLI call Oracle directly; local MCP owns protocol composition.</text>
 
-  <rect x="42" y="174" width="208" height="112" rx="5" class="box"/>
-  <text x="62" y="211" class="label">Caller or agent</text>
-  <text x="62" y="240" class="detail">Task and presentation</text>
-  <text x="62" y="264" class="detail">Python / CLI entrypoint</text>
+  <rect x="32" y="137" width="1176" height="286" rx="14" fill="#f1f7f3" stroke="#d8e4dd"/>
+  <text x="52" y="156" class="eyebrow">IMPLEMENTED LOCAL PATH</text>
+  <text x="300" y="172" class="tiny">Python / CLI direct</text>
+  <path d="M236 204 H250 V178 H500 V204 H500" class="solid"/>
 
-  <rect x="310" y="174" width="208" height="112" rx="5" class="box"/>
-  <text x="330" y="211" class="label">Recipe</text>
-  <text x="330" y="240" class="detail">Input / output meaning</text>
-  <text x="330" y="264" class="detail">Artifact and scope binding</text>
+  <rect x="52" y="190" width="184" height="112" rx="9" class="card"/>
+  <text x="70" y="222" class="label">Callers</text>
+  <text x="70" y="240" class="detail">Python · CLI</text>
+  <text x="70" y="263" class="detail">stdio MCP</text>
+  <text x="70" y="286" class="detail">Caller owns next decision</text>
 
-  <rect x="578" y="174" width="208" height="112" rx="5" fill="#e5efea" stroke="#086e70" stroke-width="1.5"/>
-  <text x="598" y="211" class="label">Runner</text>
-  <text x="598" y="240" class="detail">Identity and lifecycle</text>
-  <text x="598" y="264" class="detail">Explicit progression</text>
+  <rect x="272" y="190" width="200" height="112" rx="9" class="teal"/>
+  <text x="291" y="222" class="label">cookbook_app</text>
+  <text x="291" y="250" class="detail">Explicit Oracle registration</text>
+  <text x="291" y="275" class="detail">Catalog + MCP binding</text>
 
-  <rect x="846" y="174" width="232" height="112" rx="5" class="box"/>
-  <text x="866" y="211" class="label">Replay adapter</text>
-  <text x="866" y="240" class="detail">Synthetic events</text>
-  <text x="866" y="264" class="detail">No account or expert spend</text>
+  <rect x="508" y="190" width="190" height="112" rx="9" class="card"/>
+  <text x="527" y="222" class="label">Oracle Recipe</text>
+  <text x="527" y="250" class="detail">Brief, scope, feedback</text>
+  <text x="527" y="275" class="detail">Exact artifact binding</text>
 
-  <path d="M250 230 H302" class="line"/>
-  <path d="M518 230 H570" class="line"/>
-  <path d="M786 218 H838" class="line"/>
-  <path d="M846 252 H794" class="line"/>
+  <rect x="734" y="190" width="190" height="112" rx="9" class="teal"/>
+  <text x="753" y="222" class="label">Shared Runner</text>
+  <text x="753" y="250" class="detail">Run identity + lifecycle</text>
+  <text x="753" y="275" class="detail">Opaque recipe payloads</text>
 
-  <rect x="578" y="356" width="208" height="103" rx="5" class="box"/>
-  <text x="598" y="393" class="label">Checkpoints</text>
-  <text x="598" y="422" class="detail">Local plaintext JSON</text>
-  <text x="598" y="446" class="detail">One process at a time</text>
-  <path d="M682 286 V348" class="line"/>
-  <text x="700" y="326" class="detail">save / reload</text>
+  <rect x="960" y="190" width="216" height="112" rx="9" class="card"/>
+  <text x="980" y="222" class="label">Replay adapter</text>
+  <text x="980" y="250" class="detail">Pinned synthetic events</text>
+  <text x="980" y="275" class="detail">Default; no provider request</text>
 
-  <rect x="846" y="356" width="232" height="103" rx="5" fill="#f7f6f0" stroke="#8da398" stroke-width="1.5" stroke-dasharray="6 5"/>
-  <text x="866" y="393" class="label">Future live adapter</text>
-  <text x="866" y="422" class="detail">Verified provider contract</text>
-  <text x="866" y="446" class="detail">Separate effect authority</text>
-  <path d="M786 270 H812 V406 H838" fill="none" stroke="#687c75" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#muted-arrow)"/>
+  <path d="M236 246 H264" class="solid"/>
+  <text x="238" y="237" class="tiny">MCP path</text>
+  <path d="M472 246 H500" class="solid"/>
+  <path d="M698 246 H726" class="solid"/>
+  <path d="M924 230 H952" class="solid"/>
+  <path d="M960 268 H932" class="solid"/>
 
-  <path d="M414 286 V404 H146 V294" class="line"/>
-  <text x="64" y="442" class="detail">Validated result returns to the caller</text>
-  <text x="64" y="468" class="detail">for explanation, revision or fresh work.</text>
+  <rect x="734" y="331" width="442" height="67" rx="8" class="card"/>
+  <text x="754" y="358" class="label">Local checkpoints</text>
+  <text x="754" y="382" class="detail">Atomic JSON · restartable · one process at a time</text>
+  <path d="M829 302 V323" class="solid"/>
+  <text x="846" y="319" class="tiny">save / reload</text>
 
-  <path d="M42 514 H1078" stroke="#cedbd4"/>
-  <text x="42" y="549" class="detail">Solid: implemented offline boundary</text>
-  <path d="M392 544 H432" stroke="#8da398" stroke-width="1.6" stroke-dasharray="6 5"/>
-  <text x="444" y="549" class="detail">Dashed: future provider integration</text>
-  <text x="42" y="576" class="detail">Inspection reads saved state. It does not advance replay, wake an agent or approve effects.</text>
+  <rect x="32" y="451" width="1176" height="143" rx="14" fill="#fbf7ed" stroke="#eadcb9"/>
+  <text x="52" y="481" class="eyebrow gold-eyebrow">SEPARATE OPERATOR DIAGNOSTICS · READ ONLY</text>
+  <rect x="52" y="500" width="228" height="70" rx="8" class="gold"/>
+  <text x="70" y="529" class="label">Terac REST</text>
+  <text x="70" y="553" class="detail">Organization context</text>
+  <rect x="310" y="500" width="260" height="70" rx="8" class="gold"/>
+  <text x="328" y="529" class="label">Terac hosted MCP</text>
+  <text x="328" y="553" class="detail">Tool discovery + context</text>
+  <text x="610" y="521" class="label">Sanitized connection and shape facts</text>
+  <text x="610" y="548" class="detail">No expert task, report retrieval or Oracle feedback.</text>
+  <text x="610" y="570" class="tiny">Future fulfillment needs verified content binding and declared authority.</text>
+
+  <path d="M42 621 H1198" stroke="#d7e0da"/>
+  <text x="44" y="650" class="detail">v0.1–v1.0 · Offline recipe, package, local MCP, diagnostics and contributor acceptance</text>
+  <text x="44" y="674" class="tiny">v2.0+ stays optional: add shared or hosted behavior only when a real workflow justifies it.</text>
 </svg>

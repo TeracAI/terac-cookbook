@@ -1,25 +1,18 @@
-"""Local run identity and checkpoints for the first Cookbook recipe."""
+"""Shared versioned run lifecycle with recipe-owned opaque progress."""
 
-import hashlib
 import json
 import os
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Protocol
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-from adapters.replay import ReplayAdapter
-from adapters.simulation_mailbox import (
-    SIMULATION_CHECKPOINT_VERSION,
-    MailboxRead,
-    SimulationMailbox,
-    SimulationObservationError,
-)
+from runtime.json_utils import unique_json_object
 
-CHECKPOINT_VERSION = 1
+RECIPE_CHECKPOINT_VERSION = 3
 
 
 class CheckpointIncompatibleError(ValueError):
@@ -28,102 +21,94 @@ class CheckpointIncompatibleError(ValueError):
     code = "checkpoint_incompatible"
 
     def __init__(self):
-        super().__init__("Checkpoint is incompatible with the installed replay contract")
+        super().__init__("Checkpoint is incompatible with the installed recipe contract")
 
 
 class RunState(BaseModel):
+    """Common identity and lifecycle around opaque recipe and adapter payloads."""
+
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     run_id: str
     parent_id: str | None = None
     intent: str = Field(strict=True, min_length=1)
-    artifact_id: str
-    brief: str
-    scope: tuple[str, ...] = ()
-    mode: Literal["replay", "simulation"] = "replay"
-    checkpoint_version: int = Field(strict=True, ge=1)
+    mode: str = Field(strict=True, min_length=1)
+    checkpoint_version: Literal[3] = RECIPE_CHECKPOINT_VERSION
     recipe_contract_version: int = Field(strict=True, ge=1)
-    replay_case: str | None = Field(default=None, min_length=1)
-    replay_fixture_version: int | None = Field(default=None, strict=True, ge=1)
-    replay_fixture_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    recipe_id: str = Field(strict=True, min_length=1)
     status: Literal["working", "needs_input", "succeeded", "failed"] = "working"
-    phase: str = "waiting_for_expert"
-    question: str | None = None
-    feedback: dict | None = None
-    error: str | None = None
-    cursor: int | None = Field(default=None, ge=0, strict=True)
-    answer: str | None = None
-    simulation_ref: str | None = None
-    simulation_revision: int | None = Field(default=None, ge=0, strict=True)
-    simulation_observation_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    phase: str = Field(strict=True, min_length=1)
+    question: str | None = Field(default=None, strict=True, min_length=1)
+    error: str | None = Field(default=None, strict=True, min_length=1)
+    recipe_payload: dict
+    adapter_payload: dict
 
     @model_validator(mode="after")
-    def validate_lifecycle(self):
-        phases = {
-            "working": "waiting_for_expert",
-            "needs_input": "awaiting_clarification",
-            "succeeded": "feedback_available",
-            "failed": "invalid_event",
-        }
-        if self.phase != phases[self.status]:
-            raise ValueError("Checkpoint phase does not match its lifecycle")
-        if (self.status == "needs_input") != bool(self.question):
+    def validate_common_lifecycle(self):
+        if self.question is not None and not self.question.strip():
+            raise ValueError("Checkpoint clarification cannot be empty")
+        if (self.status == "needs_input") != (self.question is not None):
             raise ValueError("Checkpoint clarification does not match its lifecycle")
-        if (self.status == "succeeded") != (self.feedback is not None):
-            raise ValueError("Checkpoint delivery does not match its lifecycle")
+        if self.error is not None and not self.error.strip():
+            raise ValueError("Checkpoint error cannot be empty")
         if (self.status == "failed") != (self.error is not None):
             raise ValueError("Checkpoint error does not match its lifecycle")
         return self
+
+
+class RunAdapter(Protocol):
+    def observe(self, state: RunState) -> object | None: ...
+
+    def validate_progress(self, state: RunState) -> None: ...
 
 
 class Runner:
     def __init__(
         self,
         state_dir: Path,
-        adapter_for_state: Callable[[RunState], ReplayAdapter | SimulationMailbox],
-        transition_for_event: Callable[[dict | MailboxRead, RunState], dict],
+        adapter_for_state: Callable[[RunState], RunAdapter],
+        transition_for_event: Callable[[object, RunState], dict],
         validate_run: Callable[[RunState], None],
+        *,
+        recipe_id: str,
+        respond_for_state: Callable[[RunState, object], dict] | None = None,
+        observation_error_for_state: Callable[[Exception, RunState], dict] | None = None,
     ):
+        if not isinstance(recipe_id, str) or not recipe_id.strip():
+            raise ValueError("Runner requires a nonempty recipe_id")
         self.state_dir = Path(state_dir)
         self.adapter_for_state = adapter_for_state
         self.transition_for_event = transition_for_event
         self.validate_run = validate_run
+        self.recipe_id = recipe_id
+        self.respond_for_state = respond_for_state
+        self.observation_error_for_state = observation_error_for_state
 
     def start(
         self,
-        brief: str,
-        scope: tuple[str, ...],
         *,
-        mode: Literal["replay", "simulation"] = "replay",
+        mode: str,
         intent: str,
         parent_id: str | None = None,
-        replay_case: str | None = None,
         recipe_contract_version: int,
-        replay_fixture_version: int | None = None,
-        replay_fixture_digest: str | None = None,
-        simulation_ref: str | None = None,
+        recipe_payload: dict,
+        adapter_payload: dict,
+        phase: str,
     ) -> RunState:
-        replay = mode == "replay"
+        if not isinstance(recipe_payload, dict) or not isinstance(adapter_payload, dict):
+            raise ValueError("Recipe start requires opaque payload objects")
         state = RunState(
             run_id=str(uuid4()),
             parent_id=parent_id,
             intent=intent,
-            artifact_id=hashlib.sha256(brief.encode()).hexdigest(),
-            brief=brief,
-            scope=scope,
             mode=mode,
-            checkpoint_version=CHECKPOINT_VERSION if replay else SIMULATION_CHECKPOINT_VERSION,
+            checkpoint_version=RECIPE_CHECKPOINT_VERSION,
             recipe_contract_version=recipe_contract_version,
-            replay_case=replay_case if replay else None,
-            replay_fixture_version=replay_fixture_version if replay else None,
-            replay_fixture_digest=replay_fixture_digest if replay else None,
-            cursor=0 if replay else None,
-            simulation_ref=simulation_ref if not replay else None,
-            simulation_revision=0 if not replay else None,
-            simulation_observation_digest=None,
+            recipe_id=self.recipe_id,
+            phase=phase,
+            recipe_payload=recipe_payload,
+            adapter_payload=adapter_payload,
         )
-        if parent_id is not None:
-            self.inspect(parent_id)
         self.save(state)
         return state
 
@@ -133,40 +118,16 @@ class Runner:
             return state
         try:
             adapter = self.adapter_for_state(state)
-            if state.mode == "simulation":
-                if not isinstance(adapter, SimulationMailbox):
-                    raise ValueError("Simulation transport is incompatible")
-                event = adapter.observe(state)
-                if event is None:
-                    return state
-            else:
-                if not isinstance(adapter, ReplayAdapter) or state.cursor is None:
-                    raise ValueError("Replay transport is incompatible")
-                event = adapter.advance(state.cursor, state.artifact_id, state.scope)
-            update = self.transition_for_event(event, state)
-            if not isinstance(update, dict):
-                raise ValueError("Event transition must be an object")
-            state = RunState.model_validate(state.model_copy(update=update).model_dump())
-        except ValidationError as exc:
-            if state.mode == "simulation":
-                raise SimulationObservationError() from exc
-            state = state.model_copy(
-                update={
-                    "status": "failed",
-                    "phase": "invalid_event",
-                    "error": "invalid_provider_event",
-                }
-            )
-        except ValueError:
-            if state.mode == "simulation":
+            event = adapter.observe(state)
+            if event is None:
+                return state
+            state = self._apply_update(state, self.transition_for_event(event, state))
+        except CheckpointIncompatibleError:
+            raise
+        except (ValidationError, ValueError) as exc:
+            if self.observation_error_for_state is None:
                 raise
-            state = state.model_copy(
-                update={
-                    "status": "failed",
-                    "phase": "invalid_event",
-                    "error": "invalid_provider_event",
-                }
-            )
+            state = self._apply_update(state, self.observation_error_for_state(exc, state))
         self.save(state)
         return state
 
@@ -174,21 +135,35 @@ class Runner:
         state = self.inspect(run_id)
         if state.status != "needs_input":
             raise ValueError("Run has no pending clarification")
-        state = state.model_copy(
-            update={
-                "answer": answer,
-                "question": None,
-                "status": "working",
-                "phase": "waiting_for_expert",
-            }
-        )
+        if self.respond_for_state is None:
+            raise ValueError("Recipe does not accept a clarification response")
+        state = self._apply_update(state, self.respond_for_state(state, answer))
         self.save(state)
         return state
+
+    @staticmethod
+    def _apply_update(state: RunState, update: object) -> RunState:
+        if not isinstance(update, dict):
+            raise ValueError("Run transition must be an object")
+        candidate = RunState.model_validate(state.model_copy(update=update).model_dump())
+        immutable_fields = (
+            "run_id",
+            "parent_id",
+            "intent",
+            "mode",
+            "checkpoint_version",
+            "recipe_contract_version",
+            "recipe_id",
+        )
+        if any(getattr(candidate, name) != getattr(state, name) for name in immutable_fields):
+            raise CheckpointIncompatibleError()
+        return candidate
 
     def inspect(self, run_id: str) -> RunState:
         current_id = run_id
         seen: set[str] = set()
         requested = None
+        requested_owner: str | None = None
         while True:
             if current_id in seen:
                 raise CheckpointIncompatibleError()
@@ -200,18 +175,30 @@ class Runner:
                     raise
                 raise CheckpointIncompatibleError() from exc
             try:
-                state = RunState.model_validate_json(checkpoint_path.read_text(encoding="utf-8"))
+                payload = json.loads(
+                    checkpoint_path.read_text(encoding="utf-8"),
+                    object_pairs_hook=unique_json_object,
+                )
+                if (
+                    not isinstance(payload, dict)
+                    or type(payload.get("checkpoint_version")) is not int
+                    or payload["checkpoint_version"] != RECIPE_CHECKPOINT_VERSION
+                ):
+                    raise CheckpointIncompatibleError()
+                state = RunState.model_validate(payload)
             except FileNotFoundError as exc:
                 if requested is None:
                     raise
                 raise CheckpointIncompatibleError() from exc
-            except (ValidationError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            except CheckpointIncompatibleError:
+                raise
+            except (ValidationError, ValueError, UnicodeDecodeError) as exc:
                 raise CheckpointIncompatibleError() from exc
             try:
-                if (
-                    state.run_id != current_id
-                    or state.artifact_id != hashlib.sha256(state.brief.encode()).hexdigest()
-                ):
+                if state.run_id != current_id:
+                    raise CheckpointIncompatibleError()
+                owner = self._owner_for_state(state)
+                if requested is not None and owner != requested_owner:
                     raise CheckpointIncompatibleError()
                 self.validate_run(state)
                 self.validate_adapter_progress(state)
@@ -221,6 +208,7 @@ class Runner:
                 raise CheckpointIncompatibleError() from exc
             if requested is None:
                 requested = state
+                requested_owner = owner
             if state.parent_id is None:
                 return requested
             current_id = state.parent_id
@@ -234,6 +222,10 @@ class Runner:
 
     def save(self, state: RunState) -> None:
         state = RunState.model_validate(state.model_dump())
+        if self._owner_for_state(state) != self.recipe_id:
+            raise CheckpointIncompatibleError()
+        if state.parent_id is not None:
+            self.inspect(state.parent_id)
         self.validate_run(state)
         self.validate_adapter_progress(state)
         self.state_dir.mkdir(parents=True, exist_ok=True)
@@ -241,29 +233,16 @@ class Runner:
         with tempfile.NamedTemporaryFile(
             mode="w", encoding="utf-8", dir=self.state_dir, delete=False
         ) as temporary:
-            excluded = (
-                {"simulation_ref", "simulation_revision", "simulation_observation_digest"}
-                if state.mode == "replay"
-                else {
-                    "replay_case",
-                    "replay_fixture_version",
-                    "replay_fixture_digest",
-                    "cursor",
-                }
-            )
-            temporary.write(state.model_dump_json(indent=2, exclude=excluded))
+            temporary.write(json.dumps(state.model_dump(mode="json"), indent=2))
         try:
             os.replace(temporary.name, destination)
         finally:
             Path(temporary.name).unlink(missing_ok=True)
 
+    def _owner_for_state(self, state: RunState) -> str:
+        if state.recipe_id != self.recipe_id:
+            raise CheckpointIncompatibleError()
+        return state.recipe_id
+
     def validate_adapter_progress(self, state: RunState) -> None:
-        adapter = self.adapter_for_state(state)
-        if state.mode == "simulation":
-            if not isinstance(adapter, SimulationMailbox):
-                raise ValueError("Simulation checkpoint contract is incompatible")
-            adapter.validate_progress(state)
-            return
-        if not isinstance(adapter, ReplayAdapter) or state.cursor is None:
-            raise ValueError("Replay checkpoint contract is incompatible")
-        adapter.validate_progress(state.cursor, state.status, state.question, state.answer)
+        self.adapter_for_state(state).validate_progress(state)

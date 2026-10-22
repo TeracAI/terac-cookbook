@@ -3,14 +3,20 @@ import subprocess
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Annotated, Literal
 
 import anyio
 import pytest
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
+from adapters.cookbook_mcp import CookbookMCP, create_server
 from adapters.replay import ReplayAdapter
+from recipes.catalog import RecipeCatalog
 from recipes.oracle import Oracle
+from tests.recipe_mcp_fixture import SumMCPBinding
+from tests.test_recipe_catalog import SumRecipe
 
 ROOT = Path(__file__).resolve().parents[1]
 BRIEF = "Synthetic repair-shop appointment tool: demand and pricing are unproven."
@@ -23,15 +29,26 @@ def anyio_backend():
 
 
 @asynccontextmanager
-async def cookbook_session(state_dir, *, env=None, simulation_dir=None):
-    args = ["-m", "adapters.cookbook_mcp", "--state-dir", str(state_dir)]
-    if simulation_dir is not None:
-        args.extend(["--simulation-dir", str(simulation_dir)])
+async def cookbook_session(state_dir, *, env=None):
     parameters = StdioServerParameters(
         command=sys.executable,
-        args=args,
+        args=["-m", "cookbook_app", "--state-dir", str(state_dir)],
         cwd=str(ROOT),
         env=env,
+    )
+    with anyio.fail_after(30):
+        async with stdio_client(parameters) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                yield session
+
+
+@asynccontextmanager
+async def multi_recipe_session(state_dir):
+    parameters = StdioServerParameters(
+        command=sys.executable,
+        args=["-m", "tests.recipe_mcp_fixture", "--state-dir", str(state_dir)],
+        cwd=str(ROOT),
     )
     with anyio.fail_after(30):
         async with stdio_client(parameters) as (read, write):
@@ -45,39 +62,201 @@ async def call(session, name, arguments=None):
     return result, json.loads(result.content[0].text)
 
 
-def publish_simulation_observation(simulation_dir, snapshot, revision, kind, **fields):
-    reference = snapshot["simulation_ref"]
-    observation = {
-        "run_id": snapshot["run_id"],
-        "reference": reference,
-        "artifact_id": snapshot["artifact_id"],
-        "scope": snapshot["scope"],
-        "revision": revision,
-        "kind": kind,
-        **fields,
-    }
-    folder = simulation_dir / "runs" / reference.removeprefix("sim:") / "observations"
-    folder.mkdir(parents=True, exist_ok=True)
-    final = folder / f"{revision:020d}.json"
-    assert not final.exists()
-    temporary = final.with_suffix(".tmp")
-    temporary.write_text(json.dumps(observation), encoding="utf-8")
-    temporary.rename(final)
-    return final
+@pytest.mark.anyio
+async def test_second_recipe_uses_shared_stdio_wire_and_restarts_with_opaque_checkpoint(tmp_path):
+    async with multi_recipe_session(tmp_path) as session:
+        tool_names = {tool.name for tool in (await session.list_tools()).tools}
+        assert tool_names == {
+            "cookbook_list_recipes",
+            "oracle_start",
+            "oracle_inspect",
+            "oracle_respond",
+            "oracle_resume",
+            "sum_start",
+            "sum_inspect",
+            "sum_respond",
+            "sum_resume",
+            "sum_echo",
+        }
+        _, discovery = await call(session, "cookbook_list_recipes")
+        assert [entry["id"] for entry in discovery["recipes"]] == ["oracle", "sum"]
+
+        echo_result, echoed = await call(session, "sum_echo", {"value": "null"})
+        assert echo_result.isError is False
+        assert echoed == {"value": "null"}
+
+        result, started = await call(session, "sum_start", {"values": [4, 7, 11]})
+        assert result.structuredContent == started
+        assert started["status"] == "working"
+        assert started["phase"] == "awaiting_measurements"
+        arguments = {"run_id": started["run_id"]}
+        assert (await call(session, "sum_inspect", arguments))[1] == started
+        _, delivered = await call(session, "sum_resume", arguments)
+        assert delivered["phase"] == "aggregate_ready"
+        assert delivered["result"] == {"count": 3, "sum": 22}
+        assert not {"brief", "scope", "feedback", "recommendation"} & set(delivered)
+        checkpoint = json.loads((tmp_path / f"{started['run_id']}.json").read_text())
+        assert checkpoint["recipe_id"] == "sum"
+        assert checkpoint["recipe_payload"] == {
+            "values": [4, 7, 11],
+            "artifact_id": "2a58a4fae15f7bf164155763b94a1cfdcc0ddbaf6de6add64b29a787f27aad32",
+            "result": {"count": 3, "sum": 22},
+        }
+        assert not {"brief", "scope", "feedback", "recommendation"} & set(checkpoint)
+
+        count_before = len(list(tmp_path.glob("*.json")))
+        for invalid in (
+            {"values": [1, "2"]},
+            {"values": [1.0, 2]},
+            {"values": [1, 2], "path": PRIVATE_INPUT},
+        ):
+            result, error = await call(session, "sum_start", invalid)
+            assert result.isError is True
+            assert error == {"error": "invalid_request_or_checkpoint"}
+        assert len(list(tmp_path.glob("*.json"))) == count_before
+
+        result, error = await call(session, "sum_start", {"values": []})
+        assert result.isError is True
+        assert error == {"error": "sum_invalid_values"}
+        assert len(list(tmp_path.glob("*.json"))) == count_before
+
+        result, error = await call(
+            session, "sum_respond", {"run_id": started["run_id"], "response": "x"}
+        )
+        assert result.isError is True
+        assert error == {"error": "invalid_request_or_checkpoint"}
+
+    async with multi_recipe_session(tmp_path) as restarted:
+        assert (await call(restarted, "sum_inspect", arguments))[1] == delivered
 
 
-def synthetic_review(snapshot):
-    return {
-        "artifact_id": snapshot["artifact_id"],
-        "scope": snapshot["scope"],
-        "recommendation": "inconclusive",
-        "rationale": "Synthetic local mailbox review.",
-        "findings": [],
-        "comments": [],
-        "limitations": ["Synthetic rehearsal only."],
-        "next_steps": [],
-        "provenance": "synthetic",
+@pytest.mark.anyio
+async def test_sum_only_catalog_has_a_complete_binding_without_oracle(tmp_path):
+    catalog = RecipeCatalog((SumRecipe(tmp_path),))
+    server = create_server(
+        catalog=catalog,
+        bindings=(SumMCPBinding(),),
+    )
+
+    names = {tool.name for tool in await server.list_tools()}
+    assert names == {
+        "cookbook_list_recipes",
+        "sum_start",
+        "sum_inspect",
+        "sum_respond",
+        "sum_resume",
+        "sum_echo",
     }
+
+
+@pytest.mark.anyio
+async def test_mcp_preserves_typed_arguments_and_schema_constrained_strings():
+    class Request(BaseModel):
+        count: int
+        label: str
+
+    class IntegerCase(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        kind: Literal["integer"]
+        count: int
+
+    class NumberCase(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        kind: Literal["number"]
+        count: float
+
+    AtLeastTen = Annotated[int, Field(ge=10)]
+    AtMostZero = Annotated[float, Field(le=0)]
+    ShortText = Annotated[str, StringConstraints(min_length=1, max_length=4)]
+    server = CookbookMCP("typed-tools")
+    calls = {"map": 0, "typed": 0, "union": 0, "bounded": 0}
+
+    @server.tool()
+    async def typed_echo(request: Request) -> dict:
+        calls["typed"] += 1
+        return {"count": request.count, "label": request.label}
+
+    @server.tool()
+    async def typed_union(
+        value: Annotated[IntegerCase | NumberCase, Field(discriminator="kind")],
+    ) -> dict:
+        calls["union"] += 1
+        return {"case": type(value).__name__, "count": value.count}
+
+    @server.tool()
+    async def bounded_union(value: AtLeastTen | AtMostZero) -> dict:
+        calls["bounded"] += 1
+        return {"type": type(value).__name__, "value": value}
+
+    @server.tool()
+    async def literal_echo(value: Literal["true", "1", "null", "normal"]) -> dict:
+        return {"value": value}
+
+    @server.tool()
+    async def short_echo(value: ShortText) -> dict:
+        return {"value": value}
+
+    @server.tool()
+    async def integer_map(values: dict[str, int]) -> dict:
+        calls["map"] += 1
+        return values
+
+    typed = await server.call_tool("typed_echo", {"request": {"count": 1, "label": "null"}})
+    assert json.loads(typed[0].text) == {"count": 1, "label": "null"}
+
+    integer_case = await server.call_tool("typed_union", {"value": {"kind": "integer", "count": 1}})
+    assert not getattr(integer_case, "isError", False)
+    assert json.loads(integer_case[0].text) == {"case": "IntegerCase", "count": 1}
+    number_case = await server.call_tool("typed_union", {"value": {"kind": "number", "count": 1.5}})
+    assert not getattr(number_case, "isError", False)
+    assert json.loads(number_case[0].text) == {"case": "NumberCase", "count": 1.5}
+    coerced_union = await server.call_tool(
+        "typed_union", {"value": {"kind": "integer", "count": 1.0}}
+    )
+    assert coerced_union.isError is True
+
+    at_least_ten = await server.call_tool("bounded_union", {"value": 10})
+    assert json.loads(at_least_ten[0].text) == {"type": "int", "value": 10}
+    at_most_zero = await server.call_tool("bounded_union", {"value": -0.5})
+    assert json.loads(at_most_zero[0].text) == {"type": "float", "value": -0.5}
+    wrong_branch = await server.call_tool("bounded_union", {"value": 10.0})
+    assert getattr(wrong_branch, "isError", False) is True
+
+    for value in ("true", "1", "null", "normal"):
+        literal = await server.call_tool("literal_echo", {"value": value})
+        assert json.loads(literal[0].text) == {"value": value}
+
+    for value in ("1", "null", "true", "test"):
+        short = await server.call_tool("short_echo", {"value": value})
+        assert json.loads(short[0].text) == {"value": value}
+
+    too_long = await server.call_tool("short_echo", {"value": "hello"})
+    assert too_long.isError is True
+
+    invalid_request = await server.call_tool(
+        "typed_echo", {"request": {"count": 1.0, "label": "null"}}
+    )
+    assert invalid_request.isError is True
+    assert calls["typed"] == 1
+    assert calls["union"] == 2
+    assert calls["bounded"] == 2
+
+    invalid = await server.call_tool("integer_map", {"values": {"one": 1.0}})
+    assert invalid.isError is True
+    assert json.loads(invalid.content[0].text) == {"error": "invalid_request_or_checkpoint"}
+    assert calls["map"] == 0
+
+
+@pytest.mark.anyio
+async def test_recipe_discovery_advertises_read_only_local_tool(tmp_path):
+    server = create_server(catalog=RecipeCatalog(()), bindings=())
+    tool = next(tool for tool in await server.list_tools() if tool.name == "cookbook_list_recipes")
+    result = await server.call_tool("cookbook_list_recipes", {})
+
+    assert tool.annotations is not None
+    assert tool.annotations.readOnlyHint is True
+    assert tool.annotations.openWorldHint is False
+    assert json.loads(result[0].text) == {"recipes": []}
 
 
 @pytest.mark.anyio
@@ -179,6 +358,16 @@ async def test_invalid_tool_arguments_return_sanitized_errors_without_creating_r
         assert result.isError is True
         assert error == {"error": "unknown_tool"}
         assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.anyio
+async def test_unsupported_execution_mode_is_rejected_without_creating_a_run(tmp_path):
+    async with cookbook_session(tmp_path) as session:
+        result, error = await call(session, "oracle_start", {"brief": BRIEF, "mode": "unsupported"})
+
+    assert result.isError is True
+    assert error == {"error": "invalid_request_or_checkpoint"}
+    assert not list(tmp_path.glob("*.json"))
 
 
 @pytest.mark.anyio
@@ -390,7 +579,11 @@ async def test_json_looking_briefs_and_answers_keep_exact_python_caller_text(
         result, _ = await call(session, "oracle_respond", {**arguments, "answer": answer})
         assert result.isError is False
         mcp_record = json.loads((mcp_dir / f"{started['run_id']}.json").read_text(encoding="utf-8"))
-        assert mcp_record["answer"] == python_record["answer"] == answer
+        assert (
+            mcp_record["recipe_payload"]["answer"]
+            == python_record["recipe_payload"]["answer"]
+            == answer
+        )
         result, error = await call(
             session,
             "oracle_start",
@@ -401,131 +594,9 @@ async def test_json_looking_briefs_and_answers_keep_exact_python_caller_text(
         assert len(list(mcp_dir.iterdir())) == 1
 
 
-@pytest.mark.anyio
-async def test_simulation_is_hidden_until_local_mailbox_is_configured(tmp_path):
-    state_dir = tmp_path / "state"
-    async with cookbook_session(state_dir) as session:
-        _, discovery = await call(session, "cookbook_list_recipes")
-        assert discovery["recipes"][0]["modes"] == ["replay"]
-        result, error = await call(session, "oracle_start", {"brief": BRIEF, "mode": "simulation"})
-
-    assert result.isError is True
-    assert error == {"error": "simulation_unavailable"}
-    assert not state_dir.exists()
-
-
-@pytest.mark.anyio
-async def test_simulation_mcp_stdio_uses_out_of_band_observations(tmp_path):
-    state_dir = tmp_path / "state"
-    simulation_dir = tmp_path / "simulation"
-    async with cookbook_session(state_dir, simulation_dir=simulation_dir) as session:
-        _, discovery = await call(session, "cookbook_list_recipes")
-        assert discovery["recipes"][0]["modes"] == ["replay", "simulation"]
-        assert discovery["recipes"][0]["live_available"] is False
-        _, started = await call(session, "oracle_start", {"brief": BRIEF, "mode": "simulation"})
-        run_args = {"run_id": started["run_id"]}
-        checkpoint = state_dir / f"{started['run_id']}.json"
-        original = checkpoint.read_bytes()
-
-        assert started["simulation_ref"].startswith("sim:")
-        assert started["simulation_revision"] == 0
-        assert (await call(session, "oracle_inspect", run_args))[1] == started
-        _, no_observation = await call(session, "oracle_resume", run_args)
-        assert no_observation == started
-        assert checkpoint.read_bytes() == original
-
-        publish_simulation_observation(simulation_dir, started, 1, "waiting")
-        _, waiting = await call(session, "oracle_resume", run_args)
-        assert waiting["simulation_revision"] == 1
-        assert (await call(session, "oracle_inspect", run_args))[1] == waiting
-
-        publish_simulation_observation(
-            simulation_dir,
-            started,
-            2,
-            "clarification",
-            question="Who is the buyer?",
-        )
-        assert (await call(session, "oracle_inspect", run_args))[1] == waiting
-        _, pending = await call(session, "oracle_resume", run_args)
-        assert pending["status"] == "needs_input"
-        publish_simulation_observation(simulation_dir, started, 3, "waiting")
-        before_respond = {path: path.read_bytes() for path in simulation_dir.rglob("*.json")}
-        _, answered = await call(
-            session,
-            "oracle_respond",
-            {**run_args, "answer": "Independent repair shops"},
-        )
-        assert answered["status"] == "working"
-        assert answered["simulation_revision"] == 2
-        assert {
-            path: path.read_bytes() for path in simulation_dir.rglob("*.json")
-        } == before_respond
-
-        _, second_wait = await call(session, "oracle_resume", run_args)
-        assert second_wait["simulation_revision"] == 3
-        publish_simulation_observation(
-            simulation_dir,
-            started,
-            4,
-            "review",
-            feedback=synthetic_review(started),
-        )
-        _, delivered = await call(session, "oracle_resume", run_args)
-        assert delivered["status"] == "succeeded"
-        assert delivered["simulation_revision"] == 4
-        assert delivered["feedback"]["provenance"] == "synthetic"
-        assert delivered["feedback"]["artifact_id"] == started["artifact_id"]
-        assert delivered["feedback"]["scope"] == started["scope"]
-
-    async with cookbook_session(state_dir, simulation_dir=simulation_dir) as session:
-        assert (await call(session, "oracle_inspect", run_args))[1] == delivered
-        publish_simulation_observation(simulation_dir, started, 5, "waiting")
-        checkpoint = state_dir / f"{started['run_id']}.json"
-        accepted_bytes = checkpoint.read_bytes()
-        result, terminal = await call(session, "oracle_resume", run_args)
-        assert result.isError is False
-        assert terminal == delivered
-        assert checkpoint.read_bytes() == accepted_bytes
-
-
-@pytest.mark.anyio
-async def test_invalid_simulation_mcp_observation_is_sanitized_and_atomic(tmp_path):
-    state_dir = tmp_path / "state"
-    simulation_dir = tmp_path / "simulation"
-    async with cookbook_session(state_dir, simulation_dir=simulation_dir) as session:
-        _, started = await call(session, "oracle_start", {"brief": BRIEF, "mode": "simulation"})
-        observation = {
-            "run_id": started["run_id"],
-            "reference": started["simulation_ref"],
-            "artifact_id": "0" * 64,
-            "scope": started["scope"],
-            "revision": 1,
-            "kind": "waiting",
-            "private-canary": PRIVATE_INPUT,
-        }
-        folder = (
-            simulation_dir
-            / "runs"
-            / started["simulation_ref"].removeprefix("sim:")
-            / "observations"
-        )
-        folder.mkdir(parents=True, exist_ok=True)
-        (folder / f"{1:020d}.json").write_text(json.dumps(observation), encoding="utf-8")
-        checkpoint = state_dir / f"{started['run_id']}.json"
-        original = checkpoint.read_bytes()
-
-        result, error = await call(session, "oracle_resume", {"run_id": started["run_id"]})
-
-    assert result.isError is True
-    assert error == {"error": "simulation_observation_invalid"}
-    assert PRIVATE_INPUT not in json.dumps(error)
-    assert checkpoint.read_bytes() == original
-
-
 def test_startup_rejects_relative_state_directory_before_creating_state():
     result = subprocess.run(
-        [sys.executable, "-m", "adapters.cookbook_mcp", "--state-dir", "relative-state"],
+        [sys.executable, "-m", "cookbook_app", "--state-dir", "relative-state"],
         cwd=ROOT,
         capture_output=True,
         text=True,

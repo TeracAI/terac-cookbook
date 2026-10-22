@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cookbook walkthrough | Terac Cookbook</title>
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<!-- source: docs/walkthrough.md; source-sha256: 585b8217427e25d87319cebb4727225dbffc50bbf9ea63e97fc73b498e64e420 -->
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="index.html">
+      <img class="brand-mark" src="assets/terac-icon.svg" width="24" height="24" alt="">Terac Cookbook
+    </a>
+    <nav class="site-nav" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="walkthrough.html" aria-current="page">Walkthrough</a>
+        <a href="recipes/index.html">Recipes</a>
+        <a href="contributing.html">Contributing</a>
+        <a href="mcp.html">MCP</a>
+        <a href="terac-access.html">Terac access</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="page-shell">
+  <div class="page-layout">
+    <article>
+      <header class="page-header">
+        <p class="eyebrow">Cookbook 0.2.0.dev1</p>
+        <h1 id="cookbook-walkthrough">Cookbook walkthrough</h1>
+        <p class="lead">A short, local-first demonstration of the current seams. The Oracle case and its
+feedback are scripted and synthetic; no Terac account or expert spend is needed
+for the main walkthrough.</p>
+      </header>
+      <div class="content">
+<h2 id="run-oracle-replay">Run Oracle replay</h2>
+<p>Install the locked project dependencies, then start the default case:</p>
+<pre><code class="language-sh">uv sync --locked --extra connectors
+uv run --no-sync terac-oracle start --brief &quot;Synthetic repair-shop appointment tool: demand and pricing are unproven.&quot;
+</code></pre>
+<p>Copy the returned <code>run_id</code> into the commands below. The default case waits for an
+explicit <code>resume</code>, requests one clarification, and then delivers scripted
+feedback after <code>respond</code> and another <code>resume</code>:</p>
+<pre><code class="language-sh">uv run --no-sync terac-oracle inspect RUN_ID
+uv run --no-sync terac-oracle resume RUN_ID
+uv run --no-sync terac-oracle respond RUN_ID --answer &quot;Independent repair shops&quot;
+uv run --no-sync terac-oracle resume RUN_ID
+uv run --no-sync terac-oracle inspect RUN_ID
+</code></pre>
+<p>Inspection reads saved state without advancing it. The detailed
+<a href="recipes/oracle.html">Oracle guide</a> shows expected snapshots, all three outcomes,
+linked work and restart behavior.</p>
+<h2 id="show-the-mcp-caller">Show the MCP caller</h2>
+<p>Use the installed <code>terac-cookbook-mcp</code> entrypoint with an absolute local state
+directory. The <a href="mcp.html">MCP guide</a> explains the stdio launch configuration,
+discovery and the four Oracle actions. This is the inbound Cookbook MCP process;
+it does not call Terac.</p>
+<h2 id="show-the-separate-terac-diagnostics">Show the separate Terac diagnostics</h2>
+<p>The project also contains real, bounded read-only connectors: a REST organization
+context reader and a Windows operator probe for REST context plus hosted MCP tool
+and allowlisted context access. They report sanitized connection and shape facts.
+They do not submit expert work or return a report to Oracle. See
+<a href="terac-access.html">Terac access</a> for the operator procedure and credential limits.</p>
+<h2 id="what-the-walkthrough-establishes">What the walkthrough establishes</h2>
+<p>It demonstrates the packaged local workflow, explicit caller progression, saved
+state, recipe-owned feedback and optional inbound MCP. An authorized operator
+may separately demonstrate the existing Terac diagnostics. Neither the replay
+nor those diagnostics establishes real expert delivery, Oracle live fulfillment
+or production hosting.</p>
+      </div>
+    </article>
+    <nav class="toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+<div>
+<ul>
+<li><a href="#run-oracle-replay">Run Oracle replay</a></li>
+<li><a href="#show-the-mcp-caller">Show the MCP caller</a></li>
+<li><a href="#show-the-separate-terac-diagnostics">Show the separate Terac diagnostics</a></li>
+<li><a href="#what-the-walkthrough-establishes">What the walkthrough establishes</a></li>
+</ul>
+</div>
+    </nav>
+  </div>
+</main>
+<footer class="site-footer">
+  <p>Terac Cookbook 0.2.0.dev1 · Local, offline reading view.</p>
+  <p class="source-note">Markdown is canonical. <a href="walkthrough.md">Read the source</a>.</p>
+</footer>
+</body>
+</html>
