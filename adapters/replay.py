@@ -34,8 +34,8 @@ class ReplayAdapter:
     def validate_progress(
         self, cursor: int, status: str, question: str | None, answer: str | None
     ) -> None:
-        if cursor > len(self._events):
-            raise ValueError("Saved progress exceeds the replay schedule")
+        if type(cursor) is not int or not 0 <= cursor <= len(self._events):
+            raise ValueError("Saved cursor is outside the replay schedule")
         if cursor == 0:
             if status not in {"working", "failed"} or answer is not None:
                 raise ValueError("Initial replay state cannot contain released work")

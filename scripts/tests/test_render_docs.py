@@ -25,6 +25,7 @@ class RenderDocsTests(unittest.TestCase):
         self.write("docs/architecture.md", "# Architecture\n\n## Runner\n\nLocal replay.\n")
         self.write("docs/recipes/index.md", "# Recipes\n\n[Oracle](oracle.md)\n")
         self.write("docs/recipes/oracle.md", "# Oracle\n\n## Run\n\nReplay.\n")
+        self.write("docs/walkthrough.md", "# Walkthrough\n\nLocal replay.\n")
         self.write("CONTRIBUTING.md", "# Contributing\n\n## Workflow\n\nReview changes.\n")
 
     def write(self, name, content):
@@ -67,6 +68,7 @@ class RenderDocsTests(unittest.TestCase):
         self.assertIn("0.1.7", page)
         self.assertIn("source-sha256:", page)
         self.assertNotIn(str(self.root), page)
+        self.assertTrue((self.root / "docs/walkthrough.html").is_file())
         self.assertTrue((self.root / "docs/recipes/oracle.html").is_file())
 
     def test_brand_asset_rejects_nonstatic_fill_rules_before_writing(self):
@@ -112,6 +114,19 @@ class RenderDocsTests(unittest.TestCase):
             p.relative_to(self.root): p.read_bytes() for p in self.root.rglob("*") if p.is_file()
         }
         self.assertEqual(after, before)
+
+    def test_check_ignores_markdown_line_ending_style_for_source_hash(self):
+        source = self.root / "docs/index.md"
+        source.write_bytes(b"# Cookbook\n\n## Start here\n\nWelcome.\n")
+
+        result = self.run_builder()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        generated = (self.root / "docs/index.html").read_bytes()
+
+        source.write_bytes(b"# Cookbook\r\n\r\n## Start here\r\n\r\nWelcome.\r\n")
+        result = self.run_builder("--check")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.root / "docs/index.html").read_bytes(), generated)
 
     def test_rejects_missing_local_targets_fragments_and_assets(self):
         for label, destination, expected in [

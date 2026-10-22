@@ -1,28 +1,36 @@
-"""Local stdio transport for Cookbook's accepted Oracle caller interface."""
+"""Local stdio transport for explicitly composed Cookbook recipe bindings."""
 
-import argparse
 import json
-from collections.abc import Callable
-from contextvars import ContextVar
-from pathlib import Path
+import re
+from collections.abc import Callable, Iterable
+from dataclasses import asdict, is_dataclass
 
 import anyio
-from jsonschema import ValidationError, validate
+from jsonschema import Draft202012Validator, ValidationError, validators
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.fastmcp.utilities.func_metadata import FuncMetadata
 from mcp.types import CallToolResult, TextContent, ToolAnnotations
 
-from recipes.oracle import (
-    InvalidReplayCaseError,
-    Oracle,
-    ReplayCaseUnavailableError,
-    SimulationObservationError,
-    SimulationUnavailableError,
-    Snapshot,
-)
-from runtime.runner import CheckpointIncompatibleError
+from recipes.catalog import RecipeBindingError, RecipeCatalog, RecipeToolBinding
 
-_request_arguments: ContextVar[dict] = ContextVar("cookbook_request_arguments")
+_ERROR_CODE = re.compile(r"^[a-z][a-z0-9_]*$")
+_STRICT_TYPE_CHECKER = Draft202012Validator.TYPE_CHECKER.redefine_many(
+    {
+        "integer": lambda _checker, value: type(value) is int,
+        "number": lambda _checker, value: type(value) in (int, float),
+    }
+)
+_CookbookJSONSchemaValidator = validators.extend(
+    Draft202012Validator, type_checker=_STRICT_TYPE_CHECKER
+)
+
+
+class _CookbookFunctionMetadata(FuncMetadata):
+    """Avoid SDK JSON pre-parsing before typed argument validation."""
+
+    def pre_parse_json(self, data: dict) -> dict:
+        return data
 
 
 def tool_result(data: dict, *, is_error: bool = False) -> CallToolResult:
@@ -34,7 +42,49 @@ def tool_result(data: dict, *, is_error: bool = False) -> CallToolResult:
 
 
 class CookbookMCP(FastMCP):
-    """Reject extra/coerced inputs and keep SDK validation details out of tool errors."""
+    """Validate raw JSON types, preserve literal strings, and sanitize tool errors."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._registered_tool_names: set[str] = set()
+        self._invalid_input_errors: dict[str, Callable[[dict], str | None]] = {}
+
+    @property
+    def registered_tool_names(self) -> frozenset[str]:
+        return frozenset(self._registered_tool_names)
+
+    def add_tool(self, fn, name=None, **kwargs):
+        tool_name = name or fn.__name__
+        if tool_name in self._registered_tool_names:
+            raise RecipeBindingError(f"Duplicate tool name: {tool_name}")
+        super().add_tool(fn, name=tool_name, **kwargs)
+        tool = self._tool_manager.get_tool(tool_name)
+        if tool is None:
+            raise RecipeBindingError(f"Tool registration failed: {tool_name}")
+        metadata = tool.fn_metadata
+        tool.fn_metadata = _CookbookFunctionMetadata(
+            arg_model=metadata.arg_model,
+            output_schema=metadata.output_schema,
+            output_model=metadata.output_model,
+            wrap_output=metadata.wrap_output,
+        )
+        self._registered_tool_names.add(tool_name)
+
+    def set_invalid_input_error(
+        self, tool_name: str, error_for: Callable[[dict], str | None]
+    ) -> None:
+        if tool_name not in self._registered_tool_names:
+            raise RecipeBindingError(f"Cannot configure an unregistered tool: {tool_name}")
+        if tool_name in self._invalid_input_errors:
+            raise RecipeBindingError(f"Duplicate input error policy: {tool_name}")
+        self._invalid_input_errors[tool_name] = error_for
+
+    def _invalid_input_result(self, tool_name: str, arguments: dict) -> CallToolResult:
+        error_for = self._invalid_input_errors.get(tool_name)
+        code = error_for(arguments) if error_for is not None else None
+        if isinstance(code, str) and _ERROR_CODE.fullmatch(code):
+            return tool_result({"error": code}, is_error=True)
+        return tool_result({"error": "invalid_request_or_checkpoint"}, is_error=True)
 
     async def list_tools(self):
         tools = await super().list_tools()
@@ -46,115 +96,97 @@ class CookbookMCP(FastMCP):
         tool = next((tool for tool in await self.list_tools() if tool.name == name), None)
         if tool is None:
             return tool_result({"error": "unknown_tool"}, is_error=True)
-        if name == "oracle_start" and "replay_case" in arguments:
-            replay_case = arguments["replay_case"]
-            if replay_case is not None and not isinstance(replay_case, str):
-                return tool_result({"error": "invalid_replay_case"}, is_error=True)
-        token = _request_arguments.set(arguments)
+        if not isinstance(arguments, dict):
+            return self._invalid_input_result(name, {})
         try:
-            validate(arguments, tool.inputSchema)
-            sdk_arguments = arguments
-            if name == "oracle_start" and isinstance(arguments.get("replay_case"), str):
-                # FastMCP pre-parses JSON-looking strings before validating str fields.
-                # Keep the selector in the request context and give its binder a safe value.
-                sdk_arguments = {**arguments, "replay_case": None}
-            return await super().call_tool(name, sdk_arguments)
-        except (ValidationError, ToolError):
+            _CookbookJSONSchemaValidator(tool.inputSchema).validate(arguments)
+        except ValidationError:
+            return self._invalid_input_result(name, arguments)
+        try:
+            return await super().call_tool(name, arguments)
+        except ToolError:
             return tool_result({"error": "invalid_request_or_checkpoint"}, is_error=True)
-        finally:
-            _request_arguments.reset(token)
-
-
-def create_server(state_dir: Path, *, simulation_dir: Path | None = None) -> FastMCP:
-    server = CookbookMCP("Terac Cookbook", log_level="ERROR")
-    oracle = Oracle(state_dir, simulation_dir=simulation_dir)
-    run_lock = anyio.Lock()
 
     async def invoke(
-        operation: Callable[[], Snapshot], *, invalid_error: str = "invalid_request_or_checkpoint"
-    ) -> CallToolResult:
-        async with run_lock:
+        self,
+        operation: Callable[[], object],
+        *,
+        invalid_error: str = "invalid_request_or_checkpoint",
+        error_for: Callable[[Exception], str | None] | None = None,
+    ):
+        async with self.run_lock:
             try:
-                return tool_result(operation().model_dump(mode="json"))
-            except CheckpointIncompatibleError as exc:
-                return tool_result({"error": exc.code}, is_error=True)
-            except (InvalidReplayCaseError, ReplayCaseUnavailableError) as exc:
-                return tool_result({"error": exc.code}, is_error=True)
-            except (SimulationObservationError, SimulationUnavailableError) as exc:
-                return tool_result({"error": exc.code}, is_error=True)
-            except ValueError:
-                return tool_result({"error": invalid_error}, is_error=True)
+                result = operation()
+                if hasattr(result, "model_dump"):
+                    data = result.model_dump(mode="json")
+                elif is_dataclass(result):
+                    data = asdict(result)
+                elif isinstance(result, dict):
+                    data = result
+                else:
+                    raise ValueError("Recipe result must be a JSON object")
+                return tool_result(data)
             except OSError:
                 return tool_result({"error": "checkpoint_unavailable"}, is_error=True)
+            except Exception as exc:
+                code = error_for(exc) if error_for is not None else None
+                if isinstance(code, str) and _ERROR_CODE.fullmatch(code):
+                    return tool_result({"error": code}, is_error=True)
+                return tool_result({"error": invalid_error}, is_error=True)
+
+
+def _validate_bindings(
+    catalog: RecipeCatalog,
+    bindings: Iterable[RecipeToolBinding],
+) -> tuple[RecipeToolBinding, ...]:
+    entries = tuple(bindings)
+    recipe_ids = set(catalog.recipe_ids)
+    by_recipe: dict[str, RecipeToolBinding] = {}
+    all_tool_names = {"cookbook_list_recipes"}
+    for binding in entries:
+        recipe_id = getattr(binding, "recipe_id", None)
+        if not isinstance(recipe_id, str) or recipe_id not in recipe_ids:
+            raise RecipeBindingError("Unknown recipe binding")
+        if recipe_id in by_recipe:
+            raise RecipeBindingError(f"Duplicate binding for recipe: {recipe_id}")
+        names = getattr(binding, "tool_names", None)
+        if not isinstance(names, tuple) or not names:
+            raise RecipeBindingError(f"Recipe binding has no tool names: {recipe_id}")
+        for name in names:
+            if not isinstance(name, str) or not name:
+                raise RecipeBindingError("Tool names must be nonempty strings")
+            if name in all_tool_names:
+                raise RecipeBindingError(f"Duplicate tool name: {name}")
+            all_tool_names.add(name)
+        by_recipe[recipe_id] = binding
+    missing = recipe_ids - set(by_recipe)
+    if missing:
+        raise RecipeBindingError("Every recipe must have exactly one tool binding")
+    return tuple(by_recipe[recipe_id] for recipe_id in catalog.recipe_ids)
+
+
+def create_server(
+    *,
+    catalog: RecipeCatalog,
+    bindings: Iterable[RecipeToolBinding],
+) -> CookbookMCP:
+    resolved_bindings = _validate_bindings(catalog, bindings)
+    server = CookbookMCP("Terac Cookbook", log_level="ERROR")
+    server.catalog = catalog
+    server.run_lock = anyio.Lock()
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
     async def cookbook_list_recipes() -> dict:
-        """List implemented recipes and modes without reading or advancing runs."""
-        return {
-            "recipes": [
-                {
-                    "id": "oracle",
-                    "name": "Oracle",
-                    "modes": ["replay", "simulation"] if simulation_dir is not None else ["replay"],
-                    "live_available": False,
-                    **oracle.replay_metadata,
-                }
-            ]
-        }
+        """List the implemented recipe services in this composition."""
+        return {"recipes": server.catalog.list_recipes()}
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False))
-    async def oracle_start(
-        brief: str,
-        mode: str = "replay",
-        parent_id: str | None = None,
-        intent: str = "review",
-        replay_case: str | None = None,
-    ) -> CallToolResult:
-        """Start replay or configured local simulation; live is unavailable."""
-        # SDK v1 pre-parses optional strings, including the literal string "null".
-        parent_id = _request_arguments.get().get("parent_id", parent_id)
-        replay_case = _request_arguments.get().get("replay_case", replay_case)
-        return await invoke(
-            lambda: oracle.start(
-                brief,
-                mode=mode,
-                parent_id=parent_id,
-                intent=intent,
-                replay_case=replay_case,
-            ),
-            invalid_error="live_unavailable" if mode == "live" else "invalid_request_or_checkpoint",
-        )
-
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
-    async def oracle_inspect(run_id: str) -> CallToolResult:
-        """Read saved waiting, clarification, feedback or failure without advancing work."""
-        return await invoke(lambda: oracle.inspect(run_id))
-
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False))
-    async def oracle_respond(run_id: str, answer: str) -> CallToolResult:
-        """Record an answer to the pending clarification without progressing replay."""
-        return await invoke(lambda: oracle.respond(run_id, answer))
-
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False))
-    async def oracle_resume(run_id: str) -> CallToolResult:
-        """Explicitly release at most one replay event, or return paused/terminal state."""
-        return await invoke(lambda: oracle.resume(run_id))
-
+    for binding in resolved_bindings:
+        service = catalog.get(binding.recipe_id)
+        before = server.registered_tool_names
+        binding.bind(server, service)
+        registered = server.registered_tool_names - before
+        if registered != set(binding.tool_names):
+            raise RecipeBindingError(
+                f"Binding {binding.recipe_id} registered tools that differ from its declaration"
+            )
     return server
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Cookbook local Oracle MCP over stdio")
-    parser.add_argument("--state-dir", type=Path, required=True)
-    parser.add_argument("--simulation-dir", type=Path)
-    args = parser.parse_args()
-    if not args.state_dir.is_absolute():
-        parser.error("--state-dir must be absolute")
-    if args.simulation_dir is not None and not args.simulation_dir.is_absolute():
-        parser.error("--simulation-dir must be absolute")
-    create_server(args.state_dir, simulation_dir=args.simulation_dir).run(transport="stdio")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

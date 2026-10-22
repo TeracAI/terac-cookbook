@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/architecture.md; source-sha256: b92ffc0c90ccb25e84bbe3c84ec810e1064eb321382a5dee0006f127aec0c30d -->
+<!-- source: docs/architecture.md; source-sha256: b9f7a8dbf8b33c8151bfada3f0fb810a492ff59a59b210524057eb8825d9dafe -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -17,6 +17,7 @@
     <nav class="site-nav" aria-label="Main navigation">
         <a href="index.html">Home</a>
         <a href="architecture.html" aria-current="page">Architecture</a>
+        <a href="walkthrough.html">Walkthrough</a>
         <a href="recipes/index.html">Recipes</a>
         <a href="contributing.html">Contributing</a>
         <a href="mcp.html">MCP</a>
@@ -30,15 +31,15 @@
       <header class="page-header">
         <p class="eyebrow">Cookbook 0.2.0.dev1</p>
         <h1 id="architecture">Architecture</h1>
-        <p class="lead">A Recipe defines the job. The runner makes its progress inspectable. Adapters
-supply events without taking over the Recipe's meaning.</p>
+        <p class="lead">A Recipe defines the work. The shared Runner owns lifecycle and saved progress.
+Adapters supply events without taking over the Recipe's meaning.</p>
       </header>
       <div class="content">
-<p>Terac Cookbook is a local Python package. The offline baseline implements one
-Recipe, <a href="recipes/oracle.html">Oracle</a>, through Python and the <code>terac-oracle</code> CLI.
-Replay uses synthetic events without accounts, network calls or expert spend.
-An optional <a href="mcp.html">local MCP adapter</a> exposes that same caller interface.</p>
-<p><img alt="A caller invokes a Recipe, which uses the runner, local checkpoints and replay. A future live provider adapter is a separate boundary." src="assets/cookbook-runner.svg"></p>
+<p>Terac Cookbook is a local Python package. Python and the <code>terac-oracle</code> CLI call
+<a href="recipes/oracle.html">Oracle</a> directly. <code>cookbook_app</code> explicitly composes Oracle,
+the recipe catalog and the <a href="mcp.html">local MCP adapter</a>. Replay is the default
+execution path and uses synthetic events without provider requests or expert spend.</p>
+<p><img alt="Python and CLI callers invoke Oracle directly; local stdio MCP callers use cookbook_app for composition. Oracle uses the shared Runner and replay adapter; local checkpoints preserve progress. Separate REST and hosted MCP diagnostics stay outside Oracle fulfillment." src="assets/cookbook-runner.svg"></p>
 <h2 id="keep-the-responsibilities-clear">Keep the responsibilities clear</h2>
 <table>
 <thead>
@@ -53,12 +54,20 @@ An optional <a href="mcp.html">local MCP adapter</a> exposes that same caller in
 <td>Task context, presentation, revision and the next request</td>
 </tr>
 <tr>
+<td><code>cookbook_app</code></td>
+<td>Explicitly composes Oracle, the catalog and MCP tool binding</td>
+</tr>
+<tr>
+<td>Recipe catalog</td>
+<td>Code-supplied composition and read-only discovery; duplicate recipe IDs are rejected</td>
+</tr>
+<tr>
 <td>Recipe</td>
 <td>Domain input/output meaning, exact artifact binding and result validation</td>
 </tr>
 <tr>
 <td>Runner</td>
-<td>Run identity, lifecycle and explicit progression</td>
+<td>Run identity, lifecycle and explicit progression; persists opaque recipe and adapter payloads</td>
 </tr>
 <tr>
 <td>Checkpoint storage</td>
@@ -69,20 +78,27 @@ An optional <a href="mcp.html">local MCP adapter</a> exposes that same caller in
 <td>Synthetic events and controlled scheduling</td>
 </tr>
 <tr>
-<td>Simulation mailbox adapter</td>
-<td>Bounded reads of explicitly configured, operator-published synthetic observations</td>
+<td>Terac diagnostics</td>
+<td>Bounded REST context and hosted MCP discovery/context reads; operator-only and separate from Oracle</td>
 </tr>
 <tr>
-<td>Future provider adapter</td>
-<td>Authentication, transport, provider identities and verified work-content mapping</td>
+<td>Future fulfillment adapter</td>
+<td>A verified task/report binding and declared authority before any expert-work effect</td>
 </tr>
 </tbody>
 </table>
 <p>The runner does not interpret GTM feedback. Oracle does not own transport or
 rewrite the brief. An adapter does not decide whether a review passes.</p>
-<p>New recipes are explicit Python implementations with documented entrypoints.
-There is no generic recipe dispatcher or YAML execution language in this baseline.
-A second working Recipe can justify additional shared behavior.</p>
+<p>Recipes are explicit Python implementations with documented entrypoints. The
+code-supplied catalog composes the initial Recipe set and supports read-only MCP
+discovery; it does not dynamically load plug-ins or execute YAML recipes. Oracle
+is the only product Recipe today. Shared behavior should grow only when another
+product Recipe demonstrates a need for it.</p>
+<h2 id="delivery-scope">Delivery scope</h2>
+<p>The v0.1–v1.0 baseline is local Oracle replay, direct Python/CLI access,
+<code>cookbook_app</code>-composed local MCP, read-only Terac diagnostics, packaged
+installation and contributor acceptance. v2.0+ remains optional and should follow
+demonstrated use; it is not part of the current runtime contract.</p>
 <h2 id="four-actions-explicit-progress">Four actions, explicit progress</h2>
 <table>
 <thead>
@@ -106,7 +122,7 @@ A second working Recipe can justify additional shared behavior.</p>
 </tr>
 <tr>
 <td><code>resume</code></td>
-<td>Reattach and release at most one replay event or observe the next simulation revision; paused or terminal work returns saved state</td>
+<td>Reattach and release at most one replay event; paused or terminal work returns saved state</td>
 </tr>
 </tbody>
 </table>
@@ -121,7 +137,7 @@ defines the meaning of its result.</p>
 <p>For Oracle, a <code>succeeded</code> run means validated feedback was delivered. That review
 can recommend <code>pass</code>, <code>fail</code> or <code>inconclusive</code>. Malformed feedback or a wrong
 artifact/scope binding is never delivered as a review. Replay records workflow
-failure; simulation rejects the observation without changing the saved run.</p>
+failure without changing the saved run's delivered result.</p>
 <p>Keep these facts separate: run completion, expert delivery, recommendation,
 caller revision, and provider labor/payment state. A changed artifact has no
 inherited verdict. Feedback grants no authority for further effects.</p>
@@ -131,17 +147,9 @@ fixture digest. A linked lineage validates each ancestor against its own pin.
 Whitespace and JSON object-key order do not change fixture identity; changed
 events, cases or versions do.</p>
 <p>Restart uses the same state directory and run identifier. Reload checks identity,
-scope, lifecycle, replay position and lineage before returning state. Legacy,
+scope, lifecycle, replay position and lineage before returning state. Old-format,
 unsupported or altered checkpoints return <code>checkpoint_incompatible</code> without
-rewriting or silently migrating saved bytes.</p>
-<p>Opt-in simulation uses a separate version 2 checkpoint with an opaque synthetic
-reference, last accepted local revision and observation digest. It has no replay
-fixture pins. Oracle owns exact artifact/scope and feedback validation; the mailbox
-owns bounded transport reads; the runner owns saved lifecycle progression.
-Only explicit resume observes one next message. Inspect and respond do not
-observe it. Missing input preserves bytes; malformed input returns a sanitized
-error without committing progress. The <a href="recipes/oracle.html#opt-in-to-local-simulation">operator contract</a>
-requires append-only atomic publication; accepted history is not audited.</p>
+rewriting saved bytes.</p>
 <p>Storage uses atomic replacement of local plaintext JSON and supports one process
 at a time. Concurrent writers, encryption, expiry, automatic retries, cancellation,
 deadlines and production recovery are outside the current guarantees.</p>
@@ -149,15 +157,14 @@ deadlines and production recovery are outside the current guarantees.</p>
 <p><strong>Inbound</strong> means a caller invokes Cookbook. <strong>Outbound</strong> means Cookbook invokes
 a provider such as Terac. These directions have distinct authentication and
 deployment responsibilities.</p>
-<p>The baseline exposes inbound Python, CLI and optional local-stdio MCP calls,
-with replay as default and an explicitly configured local simulation adapter.
-Live selection is rejected. Credentials
-alone never select live operation or establish content compatibility.</p>
+<p>The baseline exposes inbound Python, CLI and optional local-stdio MCP calls.
+Replay is the default. Live selection is rejected, and credentials alone never
+select live operation or establish content compatibility.</p>
 <p>The MCP process owns protocol schemas, bounded error responses and serialization
 within one process. It exposes <code>cookbook_list_recipes</code> and <code>oracle_start</code>,
 <code>oracle_inspect</code>, <code>oracle_respond</code>, <code>oracle_resume</code>. It calls Oracle's existing
-methods; it adds no second execution model. Discovery reports Oracle and replay
-and configured simulation availability without reading or advancing runs.</p>
+methods; it adds no second execution model. Discovery reports Oracle and its
+replay case catalog without reading or advancing runs.</p>
 <p>Inbound Cookbook MCP is separate from outbound Terac MCP/REST and the provider's
 hosted connector. This process makes no provider requests and reads no provider
 credentials. SDK stdio checks do not establish acceptance inside a named client
@@ -170,11 +177,11 @@ review. Reconcile an uncertain submission before retrying effects.</p>
 require declared authority. Replay fixtures and published responses also need
 rights and privacy clearance for their exact version and audience.</p>
 <h2 id="read-only-context-is-a-separate-diagnostic">Read-only context is a separate diagnostic</h2>
-<p>The optional Python context reader performs one bounded REST read and discards
-provider values after shape validation. Windows operator scripts own encrypted
-local key storage and a narrow context/catalog probe. Neither is an Oracle live
-runner adapter: no provider task IDs, expert request, substantive delivery or
-continuation are introduced. See <a href="terac-access.html">Terac access</a>.</p>
+<p>The Python context reader performs one bounded REST read and discards provider
+values after shape validation. Windows operator scripts provide separate
+credential setup and a bounded REST/hosted-MCP diagnostic. Both expose only safe
+connection and shape facts. They do not submit work, retrieve a report, or feed an
+Oracle run. See <a href="terac-access.html">Terac access</a>.</p>
 <h2 id="extend-the-smallest-useful-seam">Extend the smallest useful seam</h2>
 <p>Agree the new Recipe's inputs, outputs, permitted effects and failure cases
 before runtime code. Demonstrate them through the caller interface with fake
@@ -190,6 +197,7 @@ concrete workflow and acceptance evidence.</p>
 <div>
 <ul>
 <li><a href="#keep-the-responsibilities-clear">Keep the responsibilities clear</a></li>
+<li><a href="#delivery-scope">Delivery scope</a></li>
 <li><a href="#four-actions-explicit-progress">Four actions, explicit progress</a></li>
 <li><a href="#state-is-different-from-a-recommendation">State is different from a recommendation</a></li>
 <li><a href="#replay-restart-and-compatibility">Replay, restart and compatibility</a></li>
