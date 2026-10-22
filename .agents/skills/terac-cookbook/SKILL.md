@@ -1,27 +1,53 @@
 ---
 name: terac-cookbook
-description: Run and interpret Oracle through Terac Cookbook's local Python, CLI or MCP replay interface. Use for Cookbook runs, inspection, restart and linked work; not for the separate hosted Terac connector.
+description: Discover and use an implemented Terac Cookbook recipe through its documented Python, CLI or local MCP interface; inspect, reattach and request linked work. Not the separate hosted Terac connector or recipe implementation.
 ---
 
 # Use Terac Cookbook
 
-Read the [Oracle guide](../../../docs/recipes/oracle.md); for local MCP, read its
-[launch and result contract](../../../docs/mcp.md). Use an available, configured
-caller interface. This skill does not install clients or establish compatibility.
+## Select the recipe before running it
 
-Retain `run_id` and the configured state directory. `inspect` only reads;
-`respond` answers a pending clarification without progression; `resume` releases
-at most one event. The default `inconclusive` replay needs clarification before
-delivery. Pass/fail cases deliver on their first resume. Content is scripted,
-not a real evaluation of the user's brief.
+For a configured Cookbook MCP server, call `cookbook_list_recipes` and inspect
+the available tools and their input schemas. Otherwise read the checkout's
+[README](../../../README.md) and the selected recipe's guide and CLI help.
+Discovery lists implemented capabilities; an issue, directory or YAML proposal
+does not install a recipe. This skill does not configure a client or prove its
+compatibility.
 
-After delivery, explain the recommendation and limitations before deciding how
-to use them. A successful run can carry `fail` or `inconclusive` feedback. Revision
-has no inherited verdict. Follow-up/new query uses fresh linked `start` and
-preserves the parent; it does not establish same-expert continuity.
+Read the selected recipe's input, result meaning, supported modes and failure
+contract before supplying the user's material. **For Oracle**, continue with its
+[agent guide](../../../recipes/oracle/agent-guide.md). Other recipes need their
+own contracts; do not impose Oracle's brief, GTM scope or recommendation schema.
+Do not guess a universal start tool or derive a tool name from a recipe ID.
 
-Keep replay as default. Reject unavailable live work; credentials or feedback
-grant no effect authority. Use one process per plaintext state directory and
-preserve incompatible checkpoints rather than migrating or editing them. For MCP,
-discovery is JSON text only under SDK 1.30; Oracle actions also return structured
-content. Named application-client acceptance is separate and remains unverified.
+## Work through the selected caller interface
+
+Use the advertised Python methods, CLI commands or MCP tools, not checkpoint
+edits or raw provider payloads. Retain the recipe/run identity and configured
+private state directory. Only use modes implemented by that installation; replay
+is the safe default. Credentials do not select or authorize live work.
+
+- `start` opens new work for the recipe's validated input.
+- `inspect` reads saved state without polling or advancing work.
+- `respond` answers an existing clarification; it does not itself progress work.
+- `resume` requests explicit progression within the selected mode's limits.
+  Waiting may remain waiting; do not replace it with a new run or busy-loop.
+- If supported, linked work is a fresh `start` with the documented parent and
+  intent. It preserves the prior result, not an inherited verdict or expert promise.
+
+Those are caller concepts, not universal wire names or result fields. Follow the
+selected recipe's actual schema. Treat tool errors as errors; decode documented
+JSON text when structured content is absent rather than inventing a result.
+
+## Reattach and report honestly
+
+Use the same run and compatible state location after restart, with one process
+owning a state directory at a time. Preserve incompatible checkpoints; do not
+migrate or edit them to force a successful demo. A saved run does not wake an agent.
+
+Explain the result using its recipe contract and provenance. Workflow completion
+is not necessarily a favorable domain judgment. Changed input has no inherited
+approval. Distinguish synthetic evidence from actual expert delivery and provider
+labor/payment. Advice grants no authority to disclose, recruit, spend, publish or
+make a new expert request. Stop where the requested effect lacks authority or the
+installed contract is unavailable; report the missing seam.
