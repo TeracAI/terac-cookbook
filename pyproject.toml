@@ -9,7 +9,7 @@ dependencies = ["pydantic>=2.12,<3"]
 
 [project.scripts]
 terac-oracle = "recipes.oracle.__main__:main"
-terac-cookbook-mcp = "adapters.cookbook_mcp:main"
+terac-cookbook-mcp = "cookbook_app:main"
 
 [project.optional-dependencies]
 connectors = ["httpx>=0.28,<0.29", "mcp>=1.26,<2"]
@@ -22,10 +22,10 @@ requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["runtime", "adapters", "recipes"]
+packages = ["runtime", "adapters", "recipes", "cookbook_app"]
 
 [tool.hatch.build.targets.sdist]
-include = ["runtime/", "adapters/", "recipes/", "pyproject.toml", "uv.lock", "README.md", "CONTRIBUTING.md", "docs/", "LICENSE"]
+include = ["runtime/", "adapters/", "recipes/", "cookbook_app/", "pyproject.toml", "uv.lock", "README.md", "CONTRIBUTING.md", "docs/", "LICENSE"]
 
 [tool.pytest.ini_options]
 testpaths = ["scripts/tests", "tests"]

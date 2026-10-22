@@ -27,6 +27,7 @@ PAGES = {
 OPTIONAL_PAGES = {
     "docs/mcp.md": "docs/mcp.html",
     "docs/terac-access.md": "docs/terac-access.html",
+    "docs/walkthrough.md": "docs/walkthrough.html",
 }
 MARKDOWN_ATTRIBUTES = {
     **{
@@ -287,6 +288,7 @@ def validate_pages(root, pages):
 
 def render_page(root, source, output, mapping, version):
     source_bytes = (root / source).read_bytes()
+    digest_bytes = source_bytes.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
     converter = markdown.Markdown(
         extensions=["fenced_code", "tables", "toc"],
         extension_configs={
@@ -309,9 +311,15 @@ def render_page(root, source, output, mapping, version):
     navigation = [
         ("Home", "docs/index.html"),
         ("Architecture", "docs/architecture.html"),
-        ("Recipes", "docs/recipes/index.html"),
-        ("Contributing", "docs/contributing.html"),
     ]
+    if "docs/walkthrough.md" in mapping:
+        navigation.append(("Walkthrough", mapping["docs/walkthrough.md"]))
+    navigation.extend(
+        [
+            ("Recipes", "docs/recipes/index.html"),
+            ("Contributing", "docs/contributing.html"),
+        ]
+    )
     if "docs/mcp.md" in mapping:
         navigation.append(("MCP", mapping["docs/mcp.md"]))
     if "docs/terac-access.md" in mapping:
@@ -327,7 +335,7 @@ def render_page(root, source, output, mapping, version):
     brand_mark = relative_url(root / "docs/assets/terac-icon.svg", root / output.parent)
     source_url = relative_url(root / source, root / output.parent)
     toc = converter.toc.replace('<div class="toc">', "<div>", 1).strip()
-    digest = hashlib.sha256(source_bytes).hexdigest()
+    digest = hashlib.sha256(digest_bytes).hexdigest()
     return f'''<!doctype html>
 <html lang="en">
 <head>

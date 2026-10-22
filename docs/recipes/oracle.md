@@ -19,8 +19,8 @@ which remain hypotheses and what evidence is available.
 Every snapshot returns `run_id`, `parent_id`, `intent`, `artifact_id`, `brief`,
 `scope`, `mode`, `status`, `phase`, `question`, `feedback` and
 `error`. The exact brief text determines its artifact identity; each execution
-has a distinct run identity. Replay adds `replay_case`; opt-in simulation adds
-`simulation_ref` and `simulation_revision` instead.
+has a distinct run identity. Replay snapshots also identify their selected
+`replay_case`.
 
 Feedback carries the reviewed identity/scope, recommendation, rationale, material
 findings, advisory comments, limitations, next steps and synthetic provenance.
@@ -139,9 +139,9 @@ uv run --no-sync terac-oracle --state-dir .tmp/my-oracle inspect RUN_ID
 ```
 
 Each replay checkpoint pins its case, checkpoint/recipe/fixture versions and semantic
-fixture digest. Every linked ancestor uses its own saved pin. Unsupported,
-legacy or changed pins return `checkpoint_incompatible` without rewriting saved
-state. There is no automatic migration.
+fixture digest. Every linked ancestor uses its own saved pin. Old-format,
+unsupported or changed pins return `checkpoint_incompatible` without rewriting
+saved state. There is no automatic migration.
 
 To update a clean checkout, select the reviewed revision deliberately, then run
 `uv sync --locked`. Updating source and upgrading dependencies are different
@@ -158,7 +158,8 @@ Empty briefs or answers, a response without a pending question, invalid parent
 intent and unknown runs are rejected. Unknown cases return `invalid_replay_case`;
 a known case unavailable to an injected replay adapter returns
 `replay_case_unavailable`. Invalid checkpoints return `checkpoint_incompatible`.
-The CLI reports these runtime rejections as a JSON error and exits with status 2.
+Checkpoints use the recipe-owned payload and explicit adapter payload. The CLI reports runtime
+rejections as a JSON error and exits with status 2.
 
 Schema validation and exact artifact/scope binding precede feedback delivery.
 Malformed or mismatched replay events cause workflow failure. A material finding cannot
@@ -168,92 +169,6 @@ Replay stays default regardless of credentials; `--mode live` is rejected as
 `live_unavailable`. Disclosure, recruitment, spend, follow-up, payment, rejection
 and publication require declared authority. Feedback cannot grant it. Do not
 commit local checkpoints, private briefs or confidential responses.
-
-## Opt in to local simulation
-
-Simulation rehearses independently delivered observations through the same four
-actions. It is synthetic, local and explicitly selected. Replay remains the
-default even when simulation is configured or credentials exist. It establishes
-no Terac transport, expert delivery or provider-schema compatibility.
-
-Python configures `Oracle(state_dir, simulation_dir=mailbox_dir)`. CLI users
-place the absolute mailbox path before the action, then select simulation on
-start. Use the same two directories on subsequent commands:
-
-```sh
-terac-oracle --state-dir ABSOLUTE_PRIVATE_STATE --simulation-dir ABSOLUTE_PRIVATE_MAILBOX start --mode simulation --brief "Synthetic repair-shop channel hypothesis."
-terac-oracle --state-dir ABSOLUTE_PRIVATE_STATE --simulation-dir ABSOLUTE_PRIVATE_MAILBOX inspect RUN_ID
-terac-oracle --state-dir ABSOLUTE_PRIVATE_STATE --simulation-dir ABSOLUTE_PRIVATE_MAILBOX resume RUN_ID
-```
-
-Replace the absolute-path placeholders and `RUN_ID` with your local values.
-Without mailbox configuration, simulation start returns
-`simulation_unavailable` and creates no checkpoint. A simulation run cannot
-select `replay_case`. Live remains unavailable in every configuration.
-
-Start saves revision 0 and a `sim:<uuid>` reference. The operator or test harness
-publishes observations out of band; normal callers only invoke the four actions.
-Keep mailbox messages and checkpoints private and outside tracked files.
-There is no operator publication MCP tool or automatic response generator.
-
-The operator uses the UUID after `sim:` to form this path:
-
-```text
-<simulation-dir>/runs/<uuid>/observations/<revision:020d>.json
-```
-
-An observation is UTF-8 JSON, at most 65,536 bytes. Copy the exact run ID,
-reference, artifact ID and scope from the snapshot. Choose the next positive
-revision, starting at 1. For example, a waiting observation is:
-
-```json
-{
-  "run_id": "COPY_RUN_ID",
-  "reference": "sim:COPY_REFERENCE_UUID",
-  "artifact_id": "COPY_ARTIFACT_SHA256",
-  "scope": ["buyer_pain", "willingness_to_pay", "channel_fit"],
-  "revision": 1,
-  "kind": "waiting"
-}
-```
-
-Publish by writing a temporary file in the observation directory, closing it,
-then atomically moving it to the final zero-padded revision filename with a
-no-overwrite operation. On Windows, `[System.IO.File]::Move($temporary, $final)`
-uses this behavior. Create the directory first; both variables must name files
-in that directory. An existing final filename must fail publication even when
-the bytes are identical. Do not write directly to a final filename or replace
-published observations.
-
-For a clarification, set `kind` to `clarification` and add a nonempty
-`question`. For delivery, set `kind` to `review` and add a `feedback` object
-following the [feedback contract](../../recipes/oracle/review-contract.md), with
-the exact artifact/scope and `provenance: "synthetic"`. Waiting has neither
-payload field; clarification has no `feedback`; review has no `question`.
-Omit unused fields entirely, including null-valued fields. Unknown fields,
-duplicate JSON keys and nonfinite numbers are rejected.
-
-Each explicit resume reads only the expected next revision. A missing file is
-an unchanged snapshot and unchanged checkpoint; later files are not scanned.
-An accepted waiting observation stays working; clarification pauses until
-`respond` records an answer; validated review delivery succeeds. `respond`
-records the answer locally without reading or writing the mailbox. The operator
-independently chooses the next synthetic observation. Inspection, unanswered
-clarification and terminal resume read no observation.
-
-Malformed, oversized, incorrectly bound or out-of-sequence observations return
-`simulation_observation_invalid` without changing checkpoint bytes. Errors omit
-raw payloads and local paths. Correct unpublished input before publication;
-if a malformed final file was published, preserve it as private evidence and
-start a fresh run rather than overwriting history. Accepted files are not reread
-or audited; append-only publication is a trusted operator responsibility.
-
-Simulation checkpoint version 2 retains the last accepted revision, observation
-digest and lifecycle facts, without replay fixture pins. Replay version 1 retains
-its existing shape. Restart uses the same run ID, state directory and mailbox;
-there is no implicit migration. Simulation feedback proves software behavior
-with operator-authored synthetic content, not real expert judgment. Recorded
-responses still require rights and privacy clearance before fixture publication.
 
 [Architecture](../architecture.md) explains shared state and adapter boundaries.
 [Contributing](../../CONTRIBUTING.md) describes offline testing and new Recipes.

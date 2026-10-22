@@ -8,10 +8,12 @@ locally to understand the complete workflow without an account or expert spend.
 
 ## Choose a starting point
 
+- **Run the walkthrough:** [Cookbook walkthrough](walkthrough.md) demonstrates the
+  local replay workflow and the available read-only Terac diagnostics.
 - **Run the example:** [Oracle](recipes/oracle.md) walks through waiting,
   clarification, feedback and linked work.
 - **Understand the design:** [Architecture](architecture.md) explains how recipes,
-  the runner, replay and checkpoints fit together.
+  the Runner, replay and checkpoints fit together, with the current delivery scope.
 - **Browse the catalog:** [Recipes](recipes/index.md) lists implemented examples
   and their available modes.
 - **Connect a local agent:** [Local MCP](mcp.md) exposes discovery and the same

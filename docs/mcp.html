@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/mcp.md; source-sha256: b3e588151af4cf03bd37b3f61da3c32af742ed1156436a73832e2b65bc8a5958 -->
+<!-- source: docs/mcp.md; source-sha256: 7ef17888f366b16ecb1ff73cd446c47a137187c3fc3cc1d61026faaa14df5655 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -17,6 +17,7 @@
     <nav class="site-nav" aria-label="Main navigation">
         <a href="index.html">Home</a>
         <a href="architecture.html">Architecture</a>
+        <a href="walkthrough.html">Walkthrough</a>
         <a href="recipes/index.html">Recipes</a>
         <a href="contributing.html">Contributing</a>
         <a href="mcp.html" aria-current="page">MCP</a>
@@ -30,10 +31,10 @@
       <header class="page-header">
         <p class="eyebrow">Cookbook 0.2.0.dev1</p>
         <h1 id="local-mcp">Local MCP</h1>
-        <p class="lead">Expose Oracle to a local agent through Model Context Protocol (MCP). The Cookbook
-server uses standard input/output (stdio) and calls the same Recipe interface as
-Python and CLI callers. Replay is default; local simulation requires opt-in
-process configuration and an explicit simulation start.</p>
+        <p class="lead">Expose Oracle to a local agent through Model Context Protocol (MCP). The packaged
+<code>cookbook_app</code> uses standard input/output (stdio) and explicitly registers Oracle
+with the recipe catalog. It calls the same Recipe interface as Python and CLI
+callers. Replay is the supported mode; live fulfillment is unavailable.</p>
       </header>
       <div class="content">
 <p>This is an <strong>inbound Cookbook adapter</strong>: a client invokes Cookbook. It is separate
@@ -48,7 +49,7 @@ absolute Python path so launch does not depend on a shell's current directory:</
 <pre><code class="language-text">command: ABSOLUTE_PATH_TO_CHECKOUT/.venv/bin/python
 args:
   - -m
-  - adapters.cookbook_mcp
+  - cookbook_app
   - --state-dir
   - ABSOLUTE_PATH_TO_PRIVATE_STATE_DIRECTORY
 </code></pre>
@@ -63,13 +64,6 @@ It is not a claim of accepted configuration for any named application.</p>
 at startup. Choose a directory owned by the process's local user. Tools cannot
 choose a state path or pass credentials. Standard output carries MCP protocol
 messages; the process adds no HTTP server, tunnel or remote hosting.</p>
-<p>To enable synthetic simulation, add <code>--simulation-dir ABSOLUTE_PRIVATE_MAILBOX</code>
-to the process arguments, or compose <code>create_server(state_dir,
-simulation_dir=mailbox_dir)</code> in Python. The CLI requires an absolute mailbox
-path. Tools accept no mailbox path. An independent local operator publishes
-observations using the <a href="recipes/oracle.html#opt-in-to-local-simulation">Oracle simulation lifecycle</a>.
-Restart with the same state and mailbox directories. This grants no provider
-authority and leaves replay as default.</p>
 <h2 id="discover-and-call">Discover and call</h2>
 <table>
 <thead>
@@ -81,7 +75,7 @@ authority and leaves replay as default.</p>
 <tbody>
 <tr>
 <td><code>cookbook_list_recipes</code></td>
-<td>No arguments; reports Oracle, configured modes, default replay case and packaged case descriptors</td>
+<td>No arguments; reports Oracle, its replay mode, default case and packaged case descriptors</td>
 </tr>
 <tr>
 <td><code>oracle_start</code></td>
@@ -97,7 +91,7 @@ authority and leaves replay as default.</p>
 </tr>
 <tr>
 <td><code>oracle_resume</code></td>
-<td><code>run_id</code>; releases at most one replay event or observes the next simulation revision; paused/terminal state is unchanged</td>
+<td><code>run_id</code>; releases at most one replay event; paused/terminal state is unchanged</td>
 </tr>
 </tbody>
 </table>
@@ -105,14 +99,10 @@ authority and leaves replay as default.</p>
 <code>replay_case</code> selects <code>inconclusive</code>. Other packaged selectors are
 <code>pass_with_comments</code> and <code>fail</code>. A literal string such as <code>"null"</code> is text, not
 an omitted selector.</p>
-<p>Without mailbox configuration, discovery advertises replay only and a simulation
-start returns <code>simulation_unavailable</code>. With configuration it advertises replay
-and simulation; <code>live_available</code> stays false. Set <code>mode: "simulation"</code> explicitly
-and omit <code>replay_case</code> for simulation. The server never publishes observations.</p>
 <p><code>intent</code> defaults to <code>review</code>. For fresh linked work, supply an existing
 <code>parent_id</code> and explicit <code>follow_up</code> or <code>new_query</code>. Each new run has its own
 brief binding, begins without feedback, and preserves earlier work. Replay pins
-its selected case; simulation binds its own synthetic reference and revision.</p>
+its selected case and fixture version.</p>
 <p>Send strings as literal input. JSON-looking brief and answer strings retain their
 exact text; the adapter must not reinterpret them as JSON values. Extra fields,
 missing inputs and wrong JSON types are rejected. See
@@ -131,25 +121,21 @@ meaning.</p>
 <p>Clients should parse the JSON text when structured content is absent rather than
 assuming all tools share one response shape. Oracle snapshots contain <code>run_id</code>,
 <code>parent_id</code>, <code>intent</code>, <code>artifact_id</code>, <code>brief</code>, <code>scope</code>, <code>mode</code>,
-<code>status</code>, <code>phase</code>, <code>question</code>, <code>feedback</code> and <code>error</code>. Replay adds <code>replay_case</code>;
-simulation adds <code>simulation_ref</code> and <code>simulation_revision</code> instead.</p>
+<code>status</code>, <code>phase</code>, <code>question</code>, <code>feedback</code>, <code>error</code> and <code>replay_case</code>.</p>
 <p>Error codes include <code>invalid_replay_case</code>, <code>replay_case_unavailable</code>,
 <code>checkpoint_incompatible</code>, <code>live_unavailable</code>, <code>invalid_request_or_checkpoint</code>,
-<code>checkpoint_unavailable</code>, <code>simulation_unavailable</code>,
-<code>simulation_observation_invalid</code> and <code>unknown_tool</code>. Tool error results omit raw inputs,
+<code>checkpoint_unavailable</code> and <code>unknown_tool</code>. Tool error results omit raw inputs,
 storage paths and exception details. Malformed replay feedback can also return a
 saved failed snapshot; inspect <code>status</code> and <code>error</code> as well as MCP's tool-error
-flag. Simulation rejects an invalid observation without changing its checkpoint.</p>
+flag.</p>
 <h2 id="own-one-state-directory-with-one-process">Own one state directory with one process</h2>
 <p>Oracle calls are serialized within a server process. This is not a multi-process
 lock: do not run another server or CLI writer against that directory at the same
 time. Checkpoints retain the single-process plaintext JSON limits.</p>
-<p>Restart with the same directory and <code>run_id</code>, plus the same mailbox configuration
-for simulation. Every replay run and linked ancestor resolves its own
-case/version/digest pin. Simulation retains its reference, accepted revision and
-observation digest instead. Unsupported or changed checkpoints are rejected
-without rewriting them. There are no background wakeups, deadlines, cancellation,
-automatic retries or silent migrations.</p>
+<p>Restart with the same directory and <code>run_id</code>. Every replay run and linked
+ancestor resolves its own case/version/digest pin. Unsupported or changed
+checkpoints are rejected without rewriting them. There are no background
+wakeups, deadlines, cancellation, automatic retries or silent migrations.</p>
 <p>Discovery and <code>inspect</code> observe availability or state; they do not advance work
 or approve effects. Delivery, review recommendation, revised brief and provider
 labor/payment state stay separate. Expert advice grants no additional authority.</p>

@@ -18,7 +18,7 @@ async def smoke_mcp(python: Path, work: Path, environment: dict[str, str]) -> No
     state = work / "mcp-runs"
     parameters = StdioServerParameters(
         command=str(python),
-        args=["-m", "adapters.cookbook_mcp", "--state-dir", str(state)],
+        args=["-m", "cookbook_app", "--state-dir", str(state)],
         cwd=str(work),
         env=environment,
     )
