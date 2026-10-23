@@ -1,68 +1,88 @@
 ---
 name: recipe-creation
-description: Create or extend a Terac Cookbook recipe with recipe-owned models, explicit caller registration, offline replay, isolation tests and contributor evidence. Not ordinary use of an existing recipe or an executable-YAML workflow.
+description: Create or extend a Terac Cookbook recipe with recipe-owned models, explicit Python/CLI/MCP registration and offline caller evidence. Use for recipe implementation and contribution, not running an existing recipe.
 ---
 
 # Create a Cookbook recipe
 
-Read [Contributing](../../../CONTRIBUTING.md), the architecture linked from the
-[README](../../../README.md), and the relevant source/tests in this checkout.
-Agree the caller contract and acceptance before runtime code. A proposal issue
-or YAML form is data-only intake, not an executable recipe, plugin or approval.
+Start with [Contributing](../../../CONTRIBUTING.md) and the
+[architecture](../../../docs/architecture.md). Agree the input, useful output,
+caller actions, waiting/failure cases and permitted effects before runtime code.
+The [proposal form](../../../.github/ISSUE_TEMPLATE/recipe-proposal.yml) collects
+that contract; YAML is intake, not an executable recipe or registration mechanism.
 
-## Define the recipe's job
+## Follow the implementation seams
 
-Record the user problem, required input, useful output, artifact identity,
-waiting/clarification/failure cases, permitted effects and explicit non-goals.
-Use recipe-local models and validation under `recipes/<recipe-id>/`. Oracle is an
-example, not a universal brief or verdict schema. Do not require a second recipe
-to produce GTM findings or pass/fail recommendations unless its own job needs them.
+Oracle is the worked example. Keep the new recipe's vocabulary and models local;
+its job need not use a GTM brief, findings or pass/fail recommendations.
 
-Keep lifecycle/persistence in the shared runner and protocol encoding in adapters.
-The recipe owns domain interpretation; provider progress alone is not its result.
-If the existing interface cannot represent the new job, propose the smallest
-shared change with concrete caller cases, not a second runtime or generic action
-interpreter. Read-only inspection must never advance work.
+- **Recipe shape:** [Oracle's directory guide](../../../recipes/oracle/README.md)
+  routes to its [input/result contract](../../../recipes/oracle/review-contract.md)
+  and [runnable guide](../../../docs/recipes/oracle.md).
+  [recipes/oracle/__init__.py](../../../recipes/oracle/__init__.py) owns domain
+  models, validation, artifact binding, transitions and runner integration;
+  [replay.json](../../../recipes/oracle/replay.json) supplies synthetic cases.
+- **Shared lifecycle:** [runtime/runner.py](../../../runtime/runner.py) owns
+  versioned run state, ownership, persistence and pure inspection.
+  [adapters/replay.py](../../../adapters/replay.py) supplies replay events.
+  Keep domain interpretation out of these shared components.
+- **Python service and catalog:** [recipes/catalog.py](../../../recipes/catalog.py)
+  defines `RecipeService`, `RecipeToolBinding` and `RecipeCatalog`.
+  [OracleRecipeService](../../../recipes/oracle/binding.py) binds Oracle's domain
+  API to that service and advertises its supported modes/cases.
+- **MCP tools and composition:** [OracleMCPBinding](../../../recipes/oracle/mcp.py)
+  defines explicit tool names, input schemas and recipe error mapping.
+  [cookbook_app/__init__.py](../../../cookbook_app/__init__.py) supplies the
+  services and bindings to [the MCP adapter](../../../adapters/cookbook_mcp.py).
+  Register both the new service and its binding in the intended composition;
+  the catalog does not dynamically load recipe directories.
+- **CLI and packaging:** [Oracle's __main__.py](../../../recipes/oracle/__main__.py)
+  parses commands and calls the same domain API.
+  [pyproject.toml](../../../pyproject.toml) declares console scripts, dependencies
+  and wheel packages. Add an entrypoint when a CLI is offered and verify that
+  its fixtures are packaged.
 
-## Make registration and fixtures explicit
+The [architecture diagram](../../../docs/assets/cookbook-runner.svg) shows those
+boundaries; the [Oracle workflow](../../../docs/assets/oracle-workflow.svg) shows
+the caller's progression. A new directory alone never creates a callable tool.
 
-Inspect how this revision composes recipes, entrypoints and tool definitions.
-Register the new recipe at each intended surface: Python composition, CLI
-entrypoint if offered, and MCP discovery plus named tools if offered. Explain
-which source files change. Neither a recipe directory nor naming convention
-creates a callable tool. Use an existing explicit binding/registration interface
-where present; do not assume this baseline has a plugin registry or invent one.
+## Demonstrate the new job
 
-Provide synthetic default replay and a fake provider at the supported seam.
-Fixtures need version/provenance and exact input/result binding; recorded material
-needs rights/privacy clearance. Document unavailable modes. Live requirements,
-credentials and effect authorization remain separate from replay success.
+Implement under `recipes/<recipe-id>/` with recipe-owned input/output validation,
+exact artifact/scope binding and a synthetic default replay. Document unavailable
+modes. Recorded fixtures need rights/privacy clearance and versioned provenance;
+local checkpoints are private saved state, not fixtures.
 
-## Prove the caller's workflow
+Use the existing caller tests as starting points:
 
-Test through the same Python, CLI or real MCP interface callers use, with no live
-credentials or provider effects. Cover valid delivery, waiting, repeated pure
-inspect, clarification where supported, explicit resume, restart, malformed result,
-wrong artifact and unsupported checkpoint versions. Reject bad input without
-rewriting prior state.
+- [test_recipe_catalog.py](../../../tests/test_recipe_catalog.py) includes a
+  distinct integer-sum recipe, shared lifecycle/restart, duplicate registration,
+  cross-recipe run/parent rejection and unchanged state on failure.
+- [test_cookbook_mcp.py](../../../tests/test_cookbook_mcp.py) exercises two recipes
+  over real stdio, discovery, typed arguments and recipe-local errors.
+  [recipe_mcp_fixture.py](../../../tests/recipe_mcp_fixture.py) is its explicit
+  test composition and second binding, not another shipped product recipe.
+- [test_oracle.py](../../../tests/test_oracle.py) covers Python/CLI behavior and
+  checkpoint compatibility; [test_cookbook_app.py](../../../tests/test_cookbook_app.py)
+  checks the default application's catalog and tool composition.
 
-Run the existing recipe and the new one together. Verify discovery/tools remain
-correct, one recipe's run/parent cannot be consumed or overwritten by the other,
-and domain validation/errors do not leak into shared transport. Exercise linked
-work only where supported; do not invent universal lineage behavior. Preserve
-existing caller behavior while proving the new recipe's distinct input/result.
+Prove the new recipe and Oracle work together through their public interfaces,
+without live credentials or provider effects. Cover delivery, waiting, repeated
+read-only inspection, explicit resume, restart, invalid input/result and wrong
+artifact/owner. Exercise clarification and linked work where the recipe supports
+them; preserve incompatible saved state rather than rewriting it.
 
-## Finish the contribution
+## Make the contribution reviewable
 
-Add a concise recipe guide with a runnable offline example, setup, result meaning,
-effects, limitations and acceptance evidence. Update the intended discovery/docs
-links. Follow the checkout's contribution checks and review requirements rather
-than duplicating an outdated command list here. If packaging changes, verify the
-fixture and entrypoint from an installed wheel outside the checkout; source-only
-success does not prove distribution.
-
-The PR should identify changed registration points, models, fixtures/provenance,
-caller-level test evidence, compatibility policy and remaining gates. Explain
-failing/passing CI and actual required-check enforcement separately. Keep local
-checkpoints, credentials and uncleared material out of the change. This skill
-grants no Git, provider, recruitment/payment or publication authority.
+Add a canonical recipe guide with an offline invocation, result meaning, effects
+and limitations, then update [recipe discovery docs](../../../docs/recipes/index.md).
+For a rendered guide, register its Markdown/HTML pair in the manual `PAGES` map
+in [scripts/render_docs.py](../../../scripts/render_docs.py) and generate the HTML.
+Extend [scripts/smoke_wheel.py](../../../scripts/smoke_wheel.py) for new shipped
+recipes or entrypoints: its installed-wheel checks cover CLI invocation, MCP tools
+and catalog discovery outside the source checkout.
+Follow [the contribution checks](../../../CONTRIBUTING.md#run-offline-checks)
+and independent review path. When packaging changes, verify the installed wheel
+outside the checkout. Report registration changes, fixture provenance, caller
+evidence and compatibility limits in the PR. Replay success does not establish
+live fulfillment or authority to disclose, recruit, spend, pay or publish.

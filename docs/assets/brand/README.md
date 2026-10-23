@@ -1,4 +1,11 @@
-# Terac brand asset
+# Terac brand assets
+
+The GitHub README uses the unmodified official
+[icon-tile.svg](https://terac.com/brand/icon-tile.svg), retrieved 23 October 2026
+and retained here as [icon-tile.svg](icon-tile.svg). SHA-256:
+`81f30bf23cf3e5c7fac77d1bfdfd5cf2d1cf45b43091f47981777c15380b44a9`.
+Its self-contained blue background preserves the ivory mark's contrast in light
+and dark GitHub themes without CSS or a remote image request.
 
 The Terac mark comes from the [official brand page](https://terac.com/brand),
 [icon-blue.svg](https://terac.com/brand/icon-blue.svg), retrieved 20 October 2026.
