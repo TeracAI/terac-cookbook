@@ -46,5 +46,6 @@ def test_terac_access_seams_offline(module_paths, tmp_path, monkeypatch):
         timeout=60,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+    assert "PowerShell context dialect cases passed." in result.stdout
     assert "fixture-only-key" not in result.stdout + result.stderr
     assert "sensitive-provider-value" not in result.stdout + result.stderr
