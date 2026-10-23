@@ -19,6 +19,8 @@ import markdown
 
 PAGES = {
     "docs/index.md": "docs/index.html",
+    "docs/setup.md": "docs/setup.html",
+    "docs/testing.md": "docs/testing.html",
     "docs/architecture.md": "docs/architecture.html",
     "docs/recipes/index.md": "docs/recipes/index.html",
     "docs/recipes/oracle.md": "docs/recipes/oracle.html",
@@ -310,6 +312,8 @@ def render_page(root, source, output, mapping, version):
     content = body[heading.end() :].lstrip()
     navigation = [
         ("Home", "docs/index.html"),
+        ("Setup", "docs/setup.html"),
+        ("Testing", "docs/testing.html"),
         ("Architecture", "docs/architecture.html"),
     ]
     if "docs/walkthrough.md" in mapping:

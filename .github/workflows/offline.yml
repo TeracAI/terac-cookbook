@@ -41,7 +41,32 @@ jobs:
         run: uv build
       - name: Exercise installed wheel outside checkout
         shell: bash
-        run: uv run --no-sync python scripts/smoke_wheel.py --wheel dist/*.whl --with-mcp
+        run: |
+          uv run --no-sync python scripts/smoke_wheel.py --wheel dist/*.whl
+          uv run --no-sync python scripts/smoke_wheel.py --wheel dist/*.whl --with-mcp
+
+  portable-wheel:
+    name: Installed wheel smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install environment tool
+        run: python -m pip install uv==0.11.7
+      - name: Install locked connector environment
+        run: uv sync --locked --extra connectors --python 3.12
+      - name: Build wheel
+        run: uv build --wheel
+      - name: Smoke core-only installed wheel outside the checkout
+        run: uv run --no-sync python scripts/smoke_wheel.py
+      - name: Smoke connector-enabled installed wheel outside the checkout
+        run: uv run --no-sync python scripts/smoke_wheel.py --with-mcp
 
   windows-credentials:
     runs-on: windows-latest

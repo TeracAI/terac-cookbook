@@ -38,7 +38,8 @@ uv sync --locked --extra connectors
 
 Run the [Oracle walkthrough](docs/recipes/oracle.md#run-the-default-case) to see
 the existing caller contract. Keep local checkpoints in ignored `.tmp/` or a
-private directory outside the checkout.
+private directory outside the checkout. See [local setup](docs/setup.md) for
+connector and checkpoint guidance.
 
 The `connectors` extra installs the locked HTTPX and MCP dependencies needed by
 this revision's stdio integration tests and optional read-only study attachment.
@@ -86,8 +87,13 @@ uv run --no-sync python -m pytest -q
 uv run --no-sync ruff check .
 uv run --no-sync ruff format --check .
 uv build
+uv run --no-sync python scripts/smoke_wheel.py
+uv run --no-sync python scripts/smoke_wheel.py --with-mcp
 git diff --check
 ```
+
+The [offline testing guide](docs/testing.md) describes these checks and the
+Windows/macOS installed-wheel matrix.
 
 If you edit canonical Markdown, regenerate its HTML with
 `uv run --no-sync python scripts/render_docs.py` before checking it. Markdown

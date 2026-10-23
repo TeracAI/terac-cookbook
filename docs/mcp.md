@@ -132,6 +132,9 @@ The tool contract is client-neutral. Actual acceptance inside Codex, Claude Code
 Pi, Hermes or another application is **unverified**. A local SDK stdio exchange
 does not establish application-specific launch, permissions or rendering behavior.
 Remote ChatGPT connectivity requires a separately verified transport and deployment.
+For native `command`/`args` registration, see [setup guidance](setup.md#register-with-a-native-host)
+and the linked host documentation. Those configuration examples do not establish
+that a named client has been tested with this Cookbook server.
 
 For each client, record its version and the installed server revision, then
 exercise discovery, all four actions, unchanged inspection, restart and linked

@@ -8,6 +8,10 @@ locally to understand the complete workflow without an account or expert spend.
 
 ## Choose a starting point
 
+- **Set up a checkout:** [Local setup](setup.md) covers the locked environment,
+  optional connectors and checkpoint handling.
+- **Run the checks:** [Offline testing](testing.md) explains the local suite and
+  installed-wheel smoke.
 - **Run the walkthrough:** [Cookbook walkthrough](walkthrough.md) demonstrates the
   local replay workflow and the available read-only Terac diagnostics.
 - **Run the example:** [Oracle](recipes/oracle.md) walks through waiting,
