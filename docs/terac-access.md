@@ -1,8 +1,9 @@
 # Read-only Terac access
 
-These diagnostics check a connection and response shape. They do not submit a
-brief, recruit or pay an expert, approve labor, or enable Oracle live mode.
-Oracle remains replay by default, including when a key is present.
+These diagnostics check a connection and response shape. They do not create or
+launch a study, recruit or pay an expert, approve labor, or retrieve expert
+feedback. Oracle remains replay by default, including when a key is present; its
+separate read-only live attachment requires an explicit reviewed binding.
 
 ## Choose the access path
 
@@ -102,6 +103,33 @@ and schema errors stay distinct. See the
 for provider documentation; the local reader's schema support is deliberately
 bounded to its reviewed contract.
 
+## Oracle exact-study status reader
+
+Oracle can attach to one reviewed study using a local JSON binding. The binding
+contains `format_version`, `template_version`, `read_only`, `organization_id`,
+`project_id`, `opportunity_id`, `brief_sha256` and `definition_sha256`. The final
+two values bind the exact brief and complete reviewed study definition. Obtain
+these values through an authorized review process; do not infer provider IDs or
+hashes. Store the binding outside Git and pass its absolute path as
+`--oracle-live-binding` to `terac-oracle` or `cookbook_app`.
+
+The CLI and MCP process read `TERAC_API_KEY` from their environment only when an
+explicit `resume` refreshes a live run. Attaching and inspecting remain local.
+The reader allows one context read and one read of the bound opportunity through
+the hosted Terac MCP endpoint; it validates identity and reviewed-definition
+hashes, accepts only documented top-level response fields, and returns status,
+participant count and cost fields. Unrecognized top-level fields fail as
+`invalid_response`. The context result requires a string `organizationId` that
+must match the reviewed binding. It allows an optional string `markdown` and
+may include the documented `organizationName`, `organizationSlug`,
+`balanceDollars`, and `dashboard` metadata, which it accepts and discards. These
+metadata values are not validated or exposed. Unknown context keys, malformed
+`organizationId`, or non-string `markdown` fail before the opportunity read.
+The reader does not call a submission/report retrieval tool or expose expert
+content, and does not invoke creation, launch, clarification, recruitment or
+payment tools. A failed read leaves the checkpoint unchanged.
+Replay remains the default even when a key or binding is configured.
+
 ## Tests and remaining live work
 
 The default test suite uses fake HTTP transport and synthetic secrets. Windows
@@ -109,9 +137,10 @@ credential tests use isolated temporary stores. CI does not read an operator's
 store or call Terac. The supported public seam is tested for fixed requests,
 response budgets, malformed data and sanitized failures.
 
-This increment does not connect an Oracle run to Terac expert work. That needs a
-verified request/report linkage, substantive feedback retrieval, continuation and
-recontact semantics, explicit disclosure/spend authority and uncertain-write
-reconciliation. Recorded responses also need rights/privacy clearance before
-they can become replay fixtures. See [architecture](architecture.md) for how
-transport and Recipe responsibilities remain separate.
+The status reader does not connect an Oracle run to expert feedback. Fulfillment
+needs a verified request/report linkage, substantive feedback retrieval,
+continuation and recontact semantics, explicit disclosure/spend authority and
+uncertain-write reconciliation. Recorded responses also need rights/privacy
+clearance before they can become replay fixtures. See
+[architecture](architecture.md) for how transport and Recipe responsibilities
+remain separate.

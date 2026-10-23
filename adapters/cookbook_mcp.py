@@ -116,7 +116,7 @@ class CookbookMCP(FastMCP):
     ):
         async with self.run_lock:
             try:
-                result = operation()
+                result = await anyio.to_thread.run_sync(operation)
                 if hasattr(result, "model_dump"):
                     data = result.model_dump(mode="json")
                 elif is_dataclass(result):

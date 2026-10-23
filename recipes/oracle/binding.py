@@ -13,11 +13,24 @@ class OracleRecipeService:
         self.oracle = oracle
 
     def catalog_entry(self) -> dict[str, Any]:
+        modes = ["replay"]
+        if self.oracle.live_available:
+            modes.append("live")
         return {
             "id": self.recipe_id,
             "name": self.name,
-            "modes": ["replay"],
-            "live_available": False,
+            "modes": modes,
+            "live_available": self.oracle.live_available,
+            **(
+                {
+                    "live_limit": (
+                        "Read-only status and cost observations for one reviewed study; "
+                        "no launch or expert feedback."
+                    )
+                }
+                if self.oracle.live_available
+                else {}
+            ),
             **self.oracle.replay_metadata,
         }
 

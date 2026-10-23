@@ -4,13 +4,26 @@ import argparse
 import json
 from pathlib import Path
 
-from recipes.oracle import InvalidReplayCaseError, Oracle, ReplayCaseUnavailableError
+from adapters.terac_study_contract import StudyReadError
+from recipes.oracle import (
+    InvalidReplayCaseError,
+    LiveIntegrationUnavailableError,
+    LiveLinkedWorkUnavailableError,
+    Oracle,
+    ReplayCaseUnavailableError,
+)
+from recipes.oracle.live_contract import load_oracle_live_binding
 from runtime.runner import CheckpointIncompatibleError
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Synthetic offline Oracle expert review")
     parser.add_argument("--state-dir", type=Path, default=Path(".tmp/oracle"))
+    parser.add_argument(
+        "--oracle-live-binding",
+        type=Path,
+        help="absolute path to one reviewed, read-only Terac study binding",
+    )
     actions = parser.add_subparsers(dest="action", required=True)
     start = actions.add_parser("start", help="Open review, follow_up or new_query")
     start.add_argument("--brief", required=True)
@@ -24,8 +37,15 @@ def main() -> int:
         if action == "respond":
             command.add_argument("--answer", required=True)
     args = parser.parse_args()
-    oracle = Oracle(args.state_dir)
+    if args.oracle_live_binding is not None and not args.oracle_live_binding.is_absolute():
+        parser.error("--oracle-live-binding must be absolute")
     try:
+        live_binding = (
+            load_oracle_live_binding(args.oracle_live_binding)
+            if args.oracle_live_binding is not None
+            else None
+        )
+        oracle = Oracle(args.state_dir, live_binding=live_binding)
         if args.action == "start":
             snapshot = oracle.start(
                 args.brief,
@@ -40,16 +60,20 @@ def main() -> int:
             snapshot = oracle.respond(args.run_id, args.answer)
         else:
             snapshot = oracle.resume(args.run_id)
-    except (CheckpointIncompatibleError, InvalidReplayCaseError, ReplayCaseUnavailableError) as exc:
+    except (
+        CheckpointIncompatibleError,
+        InvalidReplayCaseError,
+        LiveIntegrationUnavailableError,
+        LiveLinkedWorkUnavailableError,
+        ReplayCaseUnavailableError,
+    ) as exc:
+        print(json.dumps({"error": exc.code}))
+        return 2
+    except StudyReadError as exc:
         print(json.dumps({"error": exc.code}))
         return 2
     except ValueError:
-        error = (
-            "live_unavailable"
-            if args.action == "start" and args.mode == "live"
-            else "invalid_request_or_checkpoint"
-        )
-        print(json.dumps({"error": error}))
+        print(json.dumps({"error": "invalid_request_or_checkpoint"}))
         return 2
     except OSError:
         print(json.dumps({"error": "checkpoint_unavailable"}))

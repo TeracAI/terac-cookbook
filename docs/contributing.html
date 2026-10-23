@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: CONTRIBUTING.md; source-sha256: e6c5749384a4bfbd63352b40a83127fbf4954ae898140bcf3b385d49514d95ac -->
+<!-- source: CONTRIBUTING.md; source-sha256: a26b2664d7163859fdd148f16171d5615e6ccb48c3e0063b6ed1a994204ee9e2 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -66,9 +66,10 @@ uv sync --locked --extra connectors
 <p>Run the <a href="recipes/oracle.html#run-the-default-case">Oracle walkthrough</a> to see
 the existing caller contract. Keep local checkpoints in ignored <code>.tmp/</code> or a
 private directory outside the checkout.</p>
-<p>The <code>connectors</code> extra installs the locked HTTPX and MCP dependencies needed by this
-revision's stdio integration tests. It does not enable live provider work.
-See the <a href="mcp.html">MCP guide</a> before changing tool schemas or process setup.</p>
+<p>The <code>connectors</code> extra installs the locked HTTPX and MCP dependencies needed by
+this revision's stdio integration tests and optional read-only study attachment.
+Study creation and explicit launch are not shipped in this revision. See the
+<a href="mcp.html">MCP guide</a> before changing tool schemas or process setup.</p>
 <h2 id="build-a-recipe">Build a Recipe</h2>
 <p>Each implemented Recipe lives under <code>recipes/&lt;recipe-id&gt;/</code>. Its short README
 points to one canonical guide and any detailed domain contract. Include:</p>
@@ -76,7 +77,7 @@ points to one canonical guide and any detailed domain contract. Include:</p>
 <li>A concrete job, input, output and exact artifact/scope binding.</li>
 <li>Observable waiting, inspection, clarification, completion and failure behavior.</li>
 <li>A default replay with synthetic or explicitly cleared fixtures.</li>
-<li>Permitted effects, required authority and unavailable live behavior.</li>
+<li>Permitted effects, required authority and available or unavailable live behavior.</li>
 <li>Public-interface tests and an invocation from a clean installation.</li>
 </ul>
 <p>Python defines execution. New recipes require explicit source registration at

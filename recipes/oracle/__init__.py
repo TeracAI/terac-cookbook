@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import os
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
@@ -11,10 +12,19 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    model_serializer,
     model_validator,
 )
 
 from adapters.replay import ReplayAdapter
+from adapters.terac_study_contract import StudyReadError
+from recipes.oracle.live import OracleLiveStudyAdapter
+from recipes.oracle.live_contract import (
+    OracleLiveBinding,
+    is_safe_provider_observation,
+    oracle_phase_for_provider_status,
+    validate_live_progress,
+)
 from runtime.runner import (
     RECIPE_CHECKPOINT_VERSION,
     CheckpointIncompatibleError,
@@ -45,6 +55,20 @@ class ReplayCaseUnavailableError(ValueError):
 
     def __init__(self):
         super().__init__("Replay case is unavailable for this adapter")
+
+
+class LiveLinkedWorkUnavailableError(ValueError):
+    code = "live_linked_work_unavailable"
+
+    def __init__(self):
+        super().__init__("Live linked work is unavailable; inspect or resume the existing run")
+
+
+class LiveIntegrationUnavailableError(ValueError):
+    code = "live_unavailable"
+
+    def __init__(self):
+        super().__init__("Live integration is unavailable")
 
 
 @dataclass(frozen=True)
@@ -80,6 +104,7 @@ class OracleRunView:
     replay_case: str | None
     replay_fixture_version: int | None
     replay_fixture_digest: str | None
+    provider_observation: dict | None
 
 
 def _reject_nonfinite(value: str):
@@ -173,13 +198,23 @@ class Snapshot(BaseModel):
     artifact_id: str
     brief: str
     scope: tuple[str, ...]
-    mode: Literal["replay"]
+    mode: Literal["replay", "live"]
     replay_case: str | None = None
+    provider_observation: dict | None = None
     status: Literal["working", "needs_input", "succeeded", "failed"]
     phase: str
     question: str | None
     feedback: Review | None
     error: str | None
+
+    @model_serializer(mode="wrap")
+    def serialize_mode_fields(self, handler):
+        data = handler(self)
+        if self.mode == "replay":
+            data.pop("provider_observation", None)
+        else:
+            data.pop("replay_case", None)
+        return data
 
 
 class Oracle:
@@ -188,8 +223,19 @@ class Oracle:
         state_dir: Path,
         *,
         replay: ReplayAdapter | None = None,
+        live_binding: OracleLiveBinding | None = None,
+        credential_provider=None,
+        live_transport_factory=None,
     ):
         self._custom_replay = replay is not None
+        if live_binding is not None:
+            self._live_adapter = OracleLiveStudyAdapter(
+                live_binding,
+                credential_provider or (lambda: os.environ.get("TERAC_API_KEY")),
+                transport_factory=live_transport_factory,
+            )
+        else:
+            self._live_adapter = None
         if replay is None:
             self._default_case, self._cases = _load_packaged_cases()
         else:
@@ -238,6 +284,10 @@ class Oracle:
             ],
         }
 
+    @property
+    def live_available(self) -> bool:
+        return self._live_adapter is not None
+
     def _select_case(self, replay_case: str | None) -> _ReplayCase:
         if replay_case is None:
             replay_case = self._default_case
@@ -269,19 +319,46 @@ class Oracle:
             or (recipe["feedback"] is not None and not isinstance(recipe["feedback"], dict))
             or (recipe["answer"] is not None and not isinstance(recipe["answer"], str))
             or not isinstance(adapter, dict)
-            or set(adapter)
-            != {"cursor", "replay_case", "replay_fixture_version", "replay_fixture_digest"}
-            or type(adapter["cursor"]) is not int
-            or adapter["cursor"] < 0
-            or not isinstance(adapter["replay_case"], str)
-            or not adapter["replay_case"]
-            or type(adapter["replay_fixture_version"]) is not int
-            or adapter["replay_fixture_version"] < 1
-            or not isinstance(adapter["replay_fixture_digest"], str)
-            or len(adapter["replay_fixture_digest"]) != 64
-            or state.mode != "replay"
         ):
             raise CheckpointIncompatibleError()
+
+        if state.mode == "replay":
+            expected = {"cursor", "replay_case", "replay_fixture_version", "replay_fixture_digest"}
+            if set(adapter) != expected:
+                raise CheckpointIncompatibleError()
+            if (
+                type(adapter["cursor"]) is not int
+                or adapter["cursor"] < 0
+                or not isinstance(adapter["replay_case"], str)
+                or not adapter["replay_case"]
+                or type(adapter["replay_fixture_version"]) is not int
+                or adapter["replay_fixture_version"] < 1
+                or not isinstance(adapter["replay_fixture_digest"], str)
+                or len(adapter["replay_fixture_digest"]) != 64
+            ):
+                raise CheckpointIncompatibleError()
+            values = {
+                "cursor": adapter["cursor"],
+                "replay_case": adapter["replay_case"],
+                "replay_fixture_version": adapter["replay_fixture_version"],
+                "replay_fixture_digest": adapter["replay_fixture_digest"],
+                "provider_observation": None,
+            }
+        elif state.mode == "live":
+            try:
+                validate_live_progress(state)
+            except (TypeError, ValueError, StudyReadError) as exc:
+                raise CheckpointIncompatibleError() from exc
+            values = {
+                "cursor": None,
+                "replay_case": None,
+                "replay_fixture_version": None,
+                "replay_fixture_digest": None,
+                "provider_observation": adapter["observation"],
+            }
+        else:
+            raise CheckpointIncompatibleError()
+
         return OracleRunView(
             run_id=state.run_id,
             parent_id=state.parent_id,
@@ -297,14 +374,19 @@ class Oracle:
             feedback=recipe["feedback"],
             error=state.error,
             answer=recipe["answer"],
-            cursor=adapter["cursor"],
-            replay_case=adapter["replay_case"],
-            replay_fixture_version=adapter["replay_fixture_version"],
-            replay_fixture_digest=adapter["replay_fixture_digest"],
+            **values,
         )
 
-    def _adapter_for_state(self, state: RunState) -> ReplayAdapter:
+    def _adapter_for_state(self, state: RunState):
         view = self._view(state)
+        if view.mode == "live":
+            if self._live_adapter is None:
+                raise CheckpointIncompatibleError()
+            try:
+                self._live_adapter.validate_progress(state)
+            except (TypeError, ValueError, StudyReadError) as exc:
+                raise CheckpointIncompatibleError() from exc
+            return self._live_adapter
         case = self._cases.get(view.replay_case)
         if (
             case is None
@@ -316,7 +398,7 @@ class Oracle:
         return case.adapter
 
     def _transport_for_state(self, state: RunState):
-        return _OracleTransport(self, self._adapter_for_state(state))
+        return _OracleTransport(self, self._adapter_for_state(state), state.mode)
 
     @staticmethod
     def _respond_for_runner(state: RunState, answer: object) -> dict:
@@ -350,8 +432,13 @@ class Oracle:
         replay_case: str | None = None,
     ) -> Snapshot:
         if mode == "live":
-            raise ValueError("Live integration is unavailable")
-        if mode != "replay":
+            if self._live_adapter is None:
+                raise LiveIntegrationUnavailableError()
+            if parent_id is not None:
+                raise LiveLinkedWorkUnavailableError()
+            if replay_case is not None:
+                raise ValueError("Replay case cannot be selected for live attachment")
+        elif mode != "replay":
             raise ValueError("Unsupported Oracle mode")
         if not isinstance(brief, str):
             raise ValueError("A GTM brief must be text")
@@ -363,6 +450,18 @@ class Oracle:
             "feedback": None,
             "answer": None,
         }
+        if mode == "live":
+            return self._snapshot(
+                self._runner.start(
+                    recipe_payload=recipe_payload,
+                    adapter_payload=self._live_adapter.attach(brief),
+                    mode="live",
+                    intent=intent,
+                    parent_id=parent_id,
+                    recipe_contract_version=RECIPE_CONTRACT_VERSION,
+                    phase="awaiting_provider_refresh",
+                )
+            )
         case = self._select_case(replay_case)
         return self._snapshot(
             self._runner.start(
@@ -403,6 +502,17 @@ class Oracle:
         view = self._view(state)
         recipe = dict(state.recipe_payload)
         adapter = dict(state.adapter_payload)
+        if view.mode == "live":
+            if not isinstance(event, dict) or not is_safe_provider_observation(event):
+                raise StudyReadError("invalid_response")
+            adapter["observation"] = event
+            return {
+                "status": "working",
+                "phase": oracle_phase_for_provider_status(event["status"]),
+                "question": None,
+                "recipe_payload": recipe,
+                "adapter_payload": adapter,
+            }
         if not isinstance(event, dict):
             raise ValueError("Replay event must be an object")
         if (
@@ -445,7 +555,12 @@ class Oracle:
         ):
             raise ValueError("Oracle artifact or GTM scope is incompatible")
         Oracle._validate_intent(view.intent, view.parent_id)
-        if view.phase != _PHASE_BY_STATUS[view.status] or (view.status == "succeeded") != (
+        if view.mode == "live":
+            try:
+                validate_live_progress(state)
+            except (TypeError, ValueError, StudyReadError) as exc:
+                raise ValueError("Oracle live lifecycle is incompatible") from exc
+        elif view.phase != _PHASE_BY_STATUS[view.status] or (view.status == "succeeded") != (
             view.feedback is not None
         ):
             raise ValueError("Oracle lifecycle does not match its phase and feedback")
@@ -464,6 +579,7 @@ class Oracle:
             scope=view.scope,
             mode=view.mode,
             replay_case=view.replay_case,
+            provider_observation=view.provider_observation,
             status=view.status,
             phase=view.phase,
             question=view.question,
@@ -473,16 +589,26 @@ class Oracle:
 
 
 class _OracleTransport:
-    """Adapts replay events to the shared Runner seam."""
+    """Adapts replay and read-only provider observations to the Runner seam."""
 
-    def __init__(self, oracle: Oracle, adapter: ReplayAdapter):
+    def __init__(self, oracle: Oracle, adapter, mode: str):
         self._oracle = oracle
         self._adapter = adapter
+        self._mode = mode
 
     def observe(self, state: RunState):
         view = self._oracle._view(state)
+        if self._mode == "live":
+            return self._adapter.observe(state)
+        if view.cursor is None:
+            raise CheckpointIncompatibleError()
         return self._adapter.advance(view.cursor, view.artifact_id, view.scope)
 
     def validate_progress(self, state: RunState) -> None:
         view = self._oracle._view(state)
+        if self._mode == "live":
+            self._adapter.validate_progress(state)
+            return
+        if view.cursor is None:
+            raise CheckpointIncompatibleError()
         self._adapter.validate_progress(view.cursor, view.status, view.question, view.answer)

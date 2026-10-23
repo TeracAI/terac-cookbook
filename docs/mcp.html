@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/mcp.md; source-sha256: 7ef17888f366b16ecb1ff73cd446c47a137187c3fc3cc1d61026faaa14df5655 -->
+<!-- source: docs/mcp.md; source-sha256: a57d6fbdd8f7f5bf5339e986cc401461caddeff3772b95909dbc02ad09b34af6 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -34,36 +34,47 @@
         <p class="lead">Expose Oracle to a local agent through Model Context Protocol (MCP). The packaged
 <code>cookbook_app</code> uses standard input/output (stdio) and explicitly registers Oracle
 with the recipe catalog. It calls the same Recipe interface as Python and CLI
-callers. Replay is the supported mode; live fulfillment is unavailable.</p>
+callers. Replay is the default; a reviewed binding enables read-only observation
+of one exact study. Live expert fulfillment is unavailable.</p>
       </header>
       <div class="content">
 <p>This is an <strong>inbound Cookbook adapter</strong>: a client invokes Cookbook. It is separate
-from outbound Terac MCP/REST and Terac's hosted provider connector. It performs no
-provider requests, reads no provider credentials and enables no live fulfillment.</p>
+from outbound Terac MCP/REST and Terac's hosted provider connector. Without a
+reviewed binding, it performs no provider requests and reads no provider
+credentials. With a binding, only explicit <code>oracle_resume</code> performs bounded
+read-only context and exact-study status/cost reads. No tool creates, launches or
+delivers expert work.</p>
 <h2 id="install-and-launch">Install and launch</h2>
 <p>From the selected reviewed checkout:</p>
 <pre><code class="language-sh">uv sync --locked --extra connectors
 </code></pre>
 <p>Configure a local MCP host to launch this process. Use the installed environment's
-absolute Python path so launch does not depend on a shell's current directory:</p>
+absolute Python path so launch does not depend on a shell's current directory.
+The example enables the optional read-only attachment; for replay-only use, omit
+the binding flag and its path:</p>
 <pre><code class="language-text">command: ABSOLUTE_PATH_TO_CHECKOUT/.venv/bin/python
 args:
   - -m
   - cookbook_app
   - --state-dir
   - ABSOLUTE_PATH_TO_PRIVATE_STATE_DIRECTORY
+  - --oracle-live-binding
+  - ABSOLUTE_PATH_TO_REVIEWED_BINDING_JSON
 </code></pre>
 <p>On Windows the environment interpreter is <code>.venv\Scripts\python.exe</code>.
-Replace both placeholders with actual absolute paths. This is a generic
+Replace all three placeholders with actual absolute paths. This is a generic
 command/argument specification; translate it into your host's supported format.
 It is not a claim of accepted configuration for any named application.</p>
 <p>The installed console entrypoint is also available:</p>
 <pre><code class="language-sh">terac-cookbook-mcp --state-dir ABSOLUTE_PATH_TO_PRIVATE_STATE_DIRECTORY
 </code></pre>
 <p>The state directory is required and must be absolute; relative paths are rejected
-at startup. Choose a directory owned by the process's local user. Tools cannot
-choose a state path or pass credentials. Standard output carries MCP protocol
-messages; the process adds no HTTP server, tunnel or remote hosting.</p>
+at startup. Supply <code>--oracle-live-binding</code> only when enabling the read-only study
+attachment; its path must also be absolute. Provide <code>TERAC_API_KEY</code> to the server
+through a trusted local secret mechanism. The key is read only when an explicit
+live <code>oracle_resume</code> needs it. Tools cannot choose a state path or pass
+credentials. Standard output carries MCP protocol messages; the process adds no
+HTTP server, tunnel or remote hosting.</p>
 <h2 id="discover-and-call">Discover and call</h2>
 <table>
 <thead>
@@ -75,11 +86,11 @@ messages; the process adds no HTTP server, tunnel or remote hosting.</p>
 <tbody>
 <tr>
 <td><code>cookbook_list_recipes</code></td>
-<td>No arguments; reports Oracle, its replay mode, default case and packaged case descriptors</td>
+<td>No arguments; reports Oracle modes, binding availability, default replay case and packaged case descriptors</td>
 </tr>
 <tr>
 <td><code>oracle_start</code></td>
-<td><code>brief</code>; optional <code>mode</code>, <code>parent_id</code>, <code>intent</code>, <code>replay_case</code>; creates a saved waiting run</td>
+<td><code>brief</code>; optional <code>mode</code>, <code>parent_id</code>, <code>intent</code>, <code>replay_case</code>; creates a saved waiting run or local live attachment</td>
 </tr>
 <tr>
 <td><code>oracle_inspect</code></td>
@@ -91,12 +102,16 @@ messages; the process adds no HTTP server, tunnel or remote hosting.</p>
 </tr>
 <tr>
 <td><code>oracle_resume</code></td>
-<td><code>run_id</code>; releases at most one replay event; paused/terminal state is unchanged</td>
+<td><code>run_id</code>; releases at most one replay event or explicitly refreshes a live attachment; paused/terminal state is unchanged</td>
 </tr>
 </tbody>
 </table>
-<p><code>mode</code> defaults to <code>replay</code>; <code>live</code> returns <code>live_unavailable</code>. Omitted or null
-<code>replay_case</code> selects <code>inconclusive</code>. Other packaged selectors are
+<p><code>mode</code> defaults to <code>replay</code>; credentials alone do not select live operation.
+<code>mode: "live"</code> requires the startup binding and creates a local checkpoint
+without a provider request. The next explicit <code>oracle_resume</code> reads one bound
+study and can return only status, participant count and cost fields; no report or
+feedback is retrieved. Live linked work is unavailable. Omitted or null
+<code>replay_case</code> selects <code>inconclusive</code>; other packaged selectors are
 <code>pass_with_comments</code> and <code>fail</code>. A literal string such as <code>"null"</code> is text, not
 an omitted selector.</p>
 <p><code>intent</code> defaults to <code>review</code>. For fresh linked work, supply an existing
@@ -120,10 +135,12 @@ meaning.</p>
 </ul>
 <p>Clients should parse the JSON text when structured content is absent rather than
 assuming all tools share one response shape. Oracle snapshots contain <code>run_id</code>,
-<code>parent_id</code>, <code>intent</code>, <code>artifact_id</code>, <code>brief</code>, <code>scope</code>, <code>mode</code>,
-<code>status</code>, <code>phase</code>, <code>question</code>, <code>feedback</code>, <code>error</code> and <code>replay_case</code>.</p>
+<code>parent_id</code>, <code>intent</code>, <code>artifact_id</code>, <code>brief</code>, <code>scope</code>, <code>mode</code>, <code>status</code>, <code>phase</code>,
+<code>question</code>, <code>feedback</code> and <code>error</code>; replay snapshots include <code>replay_case</code>, while
+live snapshots include a safe <code>provider_observation</code> after a successful refresh.</p>
 <p>Error codes include <code>invalid_replay_case</code>, <code>replay_case_unavailable</code>,
-<code>checkpoint_incompatible</code>, <code>live_unavailable</code>, <code>invalid_request_or_checkpoint</code>,
+<code>checkpoint_incompatible</code>, <code>live_unavailable</code>, <code>live_linked_work_unavailable</code>,
+<code>credential_unavailable</code>, <code>binding_mismatch</code>, <code>invalid_request_or_checkpoint</code>,
 <code>checkpoint_unavailable</code> and <code>unknown_tool</code>. Tool error results omit raw inputs,
 storage paths and exception details. Malformed replay feedback can also return a
 saved failed snapshot; inspect <code>status</code> and <code>error</code> as well as MCP's tool-error

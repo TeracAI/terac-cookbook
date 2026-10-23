@@ -39,9 +39,12 @@ flowchart LR
 New recipes add their own domain code and explicit caller registrations while
 sharing the Runner. The [architecture](docs/architecture.md) explains the seams;
 [Contributing](CONTRIBUTING.md) shows how to extend and test them together.
-Replay is the supported execution path in this revision. Outbound Terac
-MCP/REST fulfillment is planned separately; live provider operations need a
-recipe-specific contract and adapter before they can be used.
+Replay is the supported way to exercise expert-work flows in this revision. A
+bounded, explicitly configured Terac adapter supports read-only organization
+context and exact-study status/cost reads; study creation, launch and expert
+fulfillment are not shipped. See the [Terac access guide](docs/terac-access.md).
+Other live provider operations need a separately reviewed recipe-specific
+contract and adapter.
 
 ## First recipe: Oracle
 

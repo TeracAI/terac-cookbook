@@ -93,24 +93,30 @@ a provider such as Terac. These directions have distinct authentication and
 deployment responsibilities.
 
 The baseline exposes inbound Python, CLI and optional local-stdio MCP calls.
-Replay is the default. Live selection is rejected, and credentials alone never
-select live operation or establish content compatibility.
+Replay is the default. An optional reviewed binding enables a read-only
+attachment to one exact study; credentials alone never select live operation or
+establish content compatibility.
 
 The MCP process owns protocol schemas, bounded error responses and serialization
 within one process. It exposes `cookbook_list_recipes` and `oracle_start`,
 `oracle_inspect`, `oracle_respond`, `oracle_resume`. It calls Oracle's existing
 methods; it adds no second execution model. Discovery reports Oracle and its
-replay case catalog without reading or advancing runs.
+replay case catalog and whether a reviewed live binding is configured. Discovery
+does not read or advance runs.
 
 Inbound Cookbook MCP is separate from outbound Terac MCP/REST and the provider's
-hosted connector. This process makes no provider requests and reads no provider
-credentials. SDK stdio checks do not establish acceptance inside a named client
-application. See the [MCP contract](mcp.md) for response formats and launch limits.
+hosted connector. Without a reviewed binding, the Cookbook process makes no
+provider requests and reads no provider credentials. With one configured,
+attaching and inspecting remain local; an explicit `resume` performs bounded
+read-only context and exact-study status/cost reads. It does not create or launch
+work or retrieve expert feedback. SDK stdio checks do not establish acceptance
+inside a named client application. See the [MCP contract](mcp.md) for response
+formats and launch limits.
 
-A future live adapter needs an agreed caller contract and observed evidence for
-submission, progress, clarification, substantive delivery, errors and uncertain
-writes. A provider status or successful login does not establish a delivered
-review. Reconcile an uncertain submission before retrying effects.
+Expert fulfillment still needs an agreed caller contract and observed evidence
+for submission, progress, clarification, substantive delivery, errors and
+uncertain writes. A provider status or successful login does not establish a
+delivered review. Reconcile an uncertain submission before retrying effects.
 
 Disclosure, recruitment, spend, follow-up, payment, rejection and publication each
 require declared authority. Replay fixtures and published responses also need
@@ -119,10 +125,11 @@ rights and privacy clearance for their exact version and audience.
 ## Read-only context is a separate diagnostic
 
 The Python context reader performs one bounded REST read and discards provider
-values after shape validation. Windows operator scripts provide separate
-credential setup and a bounded REST/hosted-MCP diagnostic. Both expose only safe
-connection and shape facts. They do not submit work, retrieve a report, or feed an
-Oracle run. See [Terac access](terac-access.md).
+values after shape validation. The Oracle study reader uses a separately reviewed
+binding and only explicit resumption to observe safe status and cost fields.
+Windows operator scripts provide separate credential setup and a bounded
+REST/hosted-MCP diagnostic. None of these reads submit work or retrieve a report.
+See [Terac access](terac-access.md).
 
 ## Extend the smallest useful seam
 

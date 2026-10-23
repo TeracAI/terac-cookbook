@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/terac-access.md; source-sha256: 7f1a1e640d5f6a42c5d7f9ab37bb916a83049b5eb08f4b7ddb013a67ffb01e85 -->
+<!-- source: docs/terac-access.md; source-sha256: 223945b21d6b7c9c683fc01f7a49d57172382585d491eb09a7a63f8154c15a0f -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -31,9 +31,10 @@
       <header class="page-header">
         <p class="eyebrow">Cookbook 0.2.0.dev1</p>
         <h1 id="read-only-terac-access">Read-only Terac access</h1>
-        <p class="lead">These diagnostics check a connection and response shape. They do not submit a
-brief, recruit or pay an expert, approve labor, or enable Oracle live mode.
-Oracle remains replay by default, including when a key is present.</p>
+        <p class="lead">These diagnostics check a connection and response shape. They do not create or
+launch a study, recruit or pay an expert, approve labor, or retrieve expert
+feedback. Oracle remains replay by default, including when a key is present; its
+separate read-only live attachment requires an explicit reviewed binding.</p>
       </header>
       <div class="content">
 <h2 id="choose-the-access-path">Choose the access path</h2>
@@ -108,17 +109,42 @@ and schema errors stay distinct. See the
 <a href="https://terac.com/docs/developers/reference/getOrganizationContext">published operation</a>
 for provider documentation; the local reader's schema support is deliberately
 bounded to its reviewed contract.</p>
+<h2 id="oracle-exact-study-status-reader">Oracle exact-study status reader</h2>
+<p>Oracle can attach to one reviewed study using a local JSON binding. The binding
+contains <code>format_version</code>, <code>template_version</code>, <code>read_only</code>, <code>organization_id</code>,
+<code>project_id</code>, <code>opportunity_id</code>, <code>brief_sha256</code> and <code>definition_sha256</code>. The final
+two values bind the exact brief and complete reviewed study definition. Obtain
+these values through an authorized review process; do not infer provider IDs or
+hashes. Store the binding outside Git and pass its absolute path as
+<code>--oracle-live-binding</code> to <code>terac-oracle</code> or <code>cookbook_app</code>.</p>
+<p>The CLI and MCP process read <code>TERAC_API_KEY</code> from their environment only when an
+explicit <code>resume</code> refreshes a live run. Attaching and inspecting remain local.
+The reader allows one context read and one read of the bound opportunity through
+the hosted Terac MCP endpoint; it validates identity and reviewed-definition
+hashes, accepts only documented top-level response fields, and returns status,
+participant count and cost fields. Unrecognized top-level fields fail as
+<code>invalid_response</code>. The context result requires a string <code>organizationId</code> that
+must match the reviewed binding. It allows an optional string <code>markdown</code> and
+may include the documented <code>organizationName</code>, <code>organizationSlug</code>,
+<code>balanceDollars</code>, and <code>dashboard</code> metadata, which it accepts and discards. These
+metadata values are not validated or exposed. Unknown context keys, malformed
+<code>organizationId</code>, or non-string <code>markdown</code> fail before the opportunity read.
+The reader does not call a submission/report retrieval tool or expose expert
+content, and does not invoke creation, launch, clarification, recruitment or
+payment tools. A failed read leaves the checkpoint unchanged.
+Replay remains the default even when a key or binding is configured.</p>
 <h2 id="tests-and-remaining-live-work">Tests and remaining live work</h2>
 <p>The default test suite uses fake HTTP transport and synthetic secrets. Windows
 credential tests use isolated temporary stores. CI does not read an operator's
 store or call Terac. The supported public seam is tested for fixed requests,
 response budgets, malformed data and sanitized failures.</p>
-<p>This increment does not connect an Oracle run to Terac expert work. That needs a
-verified request/report linkage, substantive feedback retrieval, continuation and
-recontact semantics, explicit disclosure/spend authority and uncertain-write
-reconciliation. Recorded responses also need rights/privacy clearance before
-they can become replay fixtures. See <a href="architecture.html">architecture</a> for how
-transport and Recipe responsibilities remain separate.</p>
+<p>The status reader does not connect an Oracle run to expert feedback. Fulfillment
+needs a verified request/report linkage, substantive feedback retrieval,
+continuation and recontact semantics, explicit disclosure/spend authority and
+uncertain-write reconciliation. Recorded responses also need rights/privacy
+clearance before they can become replay fixtures. See
+<a href="architecture.html">architecture</a> for how transport and Recipe responsibilities
+remain separate.</p>
       </div>
     </article>
     <nav class="toc" aria-label="On this page">
@@ -129,6 +155,7 @@ transport and Recipe responsibilities remain separate.</p>
 <li><a href="#windows-terminal-setup">Windows terminal setup</a></li>
 <li><a href="#explicit-operator-probe">Explicit operator probe</a></li>
 <li><a href="#python-context-reader">Python context reader</a></li>
+<li><a href="#oracle-exact-study-status-reader">Oracle exact-study status reader</a></li>
 <li><a href="#tests-and-remaining-live-work">Tests and remaining live work</a></li>
 </ul>
 </div>

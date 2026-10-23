@@ -6,7 +6,9 @@ brief, continue the task or request linked work.
 
 The implemented example is a fictional appointment tool for independent repair
 shops. Its replay is synthetic and scripted. It needs no account, network call
-or expert spend. Live expert fulfillment is unavailable.
+or expert spend. An optional reviewed binding can attach one exact live study for
+read-only status and cost observations. Live expert fulfillment and feedback are
+unavailable.
 
 ![Oracle's four actions move a saved run from waiting through optional clarification to feedback. The calling agent then chooses presentation, revision or fresh linked work.](../assets/oracle-workflow.svg)
 
@@ -26,6 +28,12 @@ Feedback carries the reviewed identity/scope, recommendation, rationale, materia
 findings, advisory comments, limitations, next steps and synthetic provenance.
 The [feedback contract](../../recipes/oracle/review-contract.md) defines its
 fields and interpretation.
+
+Live snapshots use `mode: "live"` and include `provider_observation` after a
+successful refresh. That object contains only provider status, participant count,
+total cost, cost per participant and currency. It contains no report, expert
+response or review recommendation. Replay snapshots retain their `replay_case`
+field and omit `provider_observation`.
 
 ## Run the default case
 
@@ -98,6 +106,31 @@ print(delivered.feedback.recommendation)
 Python and CLI use the same four actions. `inspect` reads without advancement;
 `respond` saves an answer; `resume` releases at most one event.
 
+## Attach to one reviewed live study
+
+This optional path observes status and cost for one exact, previously reviewed
+study. It does not create or launch a study, retrieve expert feedback, or support
+linked live work. The binding file must contain the exact organization, project
+and opportunity identifiers plus SHA-256 hashes for the reviewed brief and full
+study definition. Keep it and the provider key outside Git.
+
+Install the connector dependencies and pass an absolute binding path before the
+CLI action:
+
+```sh
+uv sync --locked --extra connectors
+uv run --no-sync terac-oracle --oracle-live-binding /private/path/reviewed-binding.json start --brief "Exact reviewed brief" --mode live
+```
+
+`start` validates the brief against the binding and saves a local checkpoint
+without reading credentials or contacting Terac. `inspect` remains local and
+unchanged. An explicit `resume` reads the provider status and cost. Configure
+`TERAC_API_KEY` through a trusted local secret mechanism for that process; the
+key is read only on that explicit refresh. A failed read leaves the saved run
+waiting and inspectable. See [Terac access](../terac-access.md) for the binding
+fields and read limits. Synthetic transport tests do not establish authenticated
+provider conformance.
+
 ## Call from a local MCP client
 
 The optional [Cookbook MCP process](../mcp.md) exposes discovery plus
@@ -165,10 +198,11 @@ Schema validation and exact artifact/scope binding precede feedback delivery.
 Malformed or mismatched replay events cause workflow failure. A material finding cannot
 accompany `pass`.
 
-Replay stays default regardless of credentials; `--mode live` is rejected as
-`live_unavailable`. Disclosure, recruitment, spend, follow-up, payment, rejection
-and publication require declared authority. Feedback cannot grant it. Do not
-commit local checkpoints, private briefs or confidential responses.
+Replay stays default regardless of credentials. Without a configured reviewed
+binding, `--mode live` returns `live_unavailable`. Live reads cannot grant
+authority to disclose, recruit, spend, follow up, pay, reject or publish.
+Feedback cannot grant that authority. Do not commit local checkpoints, binding
+files, private briefs or confidential responses.
 
 [Architecture](../architecture.md) explains shared state and adapter boundaries.
 [Contributing](../../CONTRIBUTING.md) describes offline testing and new Recipes.

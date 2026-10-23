@@ -2,9 +2,12 @@
 
 from mcp.types import CallToolResult, ToolAnnotations
 
+from adapters.terac_study_contract import StudyReadError
 from recipes.catalog import RecipeService, RecipeToolBinding
 from recipes.oracle import (
     InvalidReplayCaseError,
+    LiveIntegrationUnavailableError,
+    LiveLinkedWorkUnavailableError,
     ReplayCaseUnavailableError,
 )
 from recipes.oracle.binding import OracleRecipeService
@@ -27,7 +30,7 @@ class OracleMCPBinding(RecipeToolBinding):
             intent: str = "review",
             replay_case: str | None = None,
         ) -> CallToolResult:
-            """Start replay; live is unavailable."""
+            """Start replay or an explicitly configured read-only attachment."""
             return await server.invoke(
                 lambda: service.start(
                     {
@@ -38,9 +41,7 @@ class OracleMCPBinding(RecipeToolBinding):
                         "replay_case": replay_case,
                     }
                 ),
-                invalid_error=(
-                    "live_unavailable" if mode == "live" else "invalid_request_or_checkpoint"
-                ),
+                invalid_error="invalid_request_or_checkpoint",
                 error_for=_oracle_error_code,
             )
 
@@ -58,9 +59,9 @@ class OracleMCPBinding(RecipeToolBinding):
                 lambda: service.respond(run_id, answer), error_for=_oracle_error_code
             )
 
-        @server.tool(annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=False))
+        @server.tool(annotations=ToolAnnotations(readOnlyHint=False, openWorldHint=True))
         async def oracle_resume(run_id: str) -> CallToolResult:
-            """Release at most one local event or return paused/terminal state."""
+            """Release one local event or make an explicit read-only provider refresh."""
             return await server.invoke(lambda: service.resume(run_id), error_for=_oracle_error_code)
 
         server.set_invalid_input_error("oracle_start", _oracle_start_input_error)
@@ -72,7 +73,10 @@ def _oracle_error_code(error: Exception) -> str | None:
         (
             CheckpointIncompatibleError,
             InvalidReplayCaseError,
+            LiveIntegrationUnavailableError,
+            LiveLinkedWorkUnavailableError,
             ReplayCaseUnavailableError,
+            StudyReadError,
         ),
     ):
         return error.code

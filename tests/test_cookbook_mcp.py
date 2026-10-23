@@ -1,4 +1,6 @@
+import hashlib
 import json
+import os
 import subprocess
 import sys
 from contextlib import asynccontextmanager
@@ -29,10 +31,13 @@ def anyio_backend():
 
 
 @asynccontextmanager
-async def cookbook_session(state_dir, *, env=None):
+async def cookbook_session(state_dir, *, env=None, live_binding_path=None):
+    args = ["-m", "cookbook_app", "--state-dir", str(state_dir)]
+    if live_binding_path is not None:
+        args.extend(["--oracle-live-binding", str(live_binding_path)])
     parameters = StdioServerParameters(
         command=sys.executable,
-        args=["-m", "cookbook_app", "--state-dir", str(state_dir)],
+        args=args,
         cwd=str(ROOT),
         env=env,
     )
@@ -384,6 +389,84 @@ async def test_credentials_do_not_select_live_and_explicit_live_creates_no_run(t
         assert started["mode"] == "replay"
         _, discovery = await call(session, "cookbook_list_recipes")
         assert discovery["recipes"][0]["live_available"] is False
+
+
+def _write_live_binding(path):
+    path.write_text(
+        json.dumps(
+            {
+                "format_version": 1,
+                "template_version": 1,
+                "read_only": True,
+                "organization_id": "synthetic-org",
+                "project_id": "synthetic-project",
+                "opportunity_id": "synthetic-study",
+                "brief_sha256": hashlib.sha256(BRIEF.encode()).hexdigest(),
+                "definition_sha256": "d" * 64,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def _credential_free_environment():
+    return {
+        name: os.environ[name] for name in ("PATH", "SYSTEMROOT", "WINDIR") if name in os.environ
+    }
+
+
+@pytest.mark.anyio
+async def test_configured_live_mcp_attachment_is_inspectable_and_refresh_is_explicit(tmp_path):
+    binding_path = tmp_path / "reviewed-binding.json"
+    _write_live_binding(binding_path)
+    state_dir = tmp_path / "state"
+
+    async with cookbook_session(
+        state_dir,
+        env=_credential_free_environment(),
+        live_binding_path=binding_path,
+    ) as session:
+        _, discovery = await call(session, "cookbook_list_recipes")
+        assert discovery["recipes"][0]["modes"] == ["replay", "live"]
+        assert discovery["recipes"][0]["live_available"] is True
+        assert "no launch or expert feedback" in discovery["recipes"][0]["live_limit"]
+
+        result, attached = await call(session, "oracle_start", {"brief": BRIEF, "mode": "live"})
+        assert result.isError is False
+        assert attached["mode"] == "live"
+        assert attached["phase"] == "awaiting_provider_refresh"
+        assert attached["provider_observation"] is None
+        assert "synthetic-study" not in json.dumps(attached)
+        checkpoint = state_dir / f"{attached['run_id']}.json"
+        original = checkpoint.read_bytes()
+        inspected = await call(session, "oracle_inspect", {"run_id": attached["run_id"]})
+        assert inspected[1] == attached
+        result, error = await call(session, "oracle_resume", {"run_id": attached["run_id"]})
+        assert result.isError is True
+        assert error == {"error": "credential_unavailable"}
+        assert checkpoint.read_bytes() == original
+
+
+@pytest.mark.anyio
+async def test_configured_live_invalid_start_reports_request_error(tmp_path):
+    binding_path = tmp_path / "reviewed-binding.json"
+    _write_live_binding(binding_path)
+    state_dir = tmp_path / "state"
+
+    async with cookbook_session(
+        state_dir,
+        env=_credential_free_environment(),
+        live_binding_path=binding_path,
+    ) as session:
+        result, error = await call(
+            session,
+            "oracle_start",
+            {"brief": BRIEF, "mode": "live", "replay_case": "fail"},
+        )
+
+    assert result.isError is True
+    assert error == {"error": "invalid_request_or_checkpoint"}
+    assert not list(state_dir.glob("*.json"))
 
 
 @pytest.mark.anyio

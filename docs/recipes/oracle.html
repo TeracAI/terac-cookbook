@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../assets/site.css">
 </head>
 <body>
-<!-- source: docs/recipes/oracle.md; source-sha256: fb6e6e8279b857fefc2ade42214d5141b797639f6e4ca610c02896fa51c11e47 -->
+<!-- source: docs/recipes/oracle.md; source-sha256: 73e4ad1c7fa9d8c7861f3ec3a54109aa6ddcd69bd71514fea34c3443315d569a -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -38,7 +38,9 @@ brief, continue the task or request linked work.</p>
       <div class="content">
 <p>The implemented example is a fictional appointment tool for independent repair
 shops. Its replay is synthetic and scripted. It needs no account, network call
-or expert spend. Live expert fulfillment is unavailable.</p>
+or expert spend. An optional reviewed binding can attach one exact live study for
+read-only status and cost observations. Live expert fulfillment and feedback are
+unavailable.</p>
 <p><img alt="Oracle&#x27;s four actions move a saved run from waiting through optional clarification to feedback. The calling agent then chooses presentation, revision or fresh linked work." src="../assets/oracle-workflow.svg"></p>
 <h2 id="input-scope-and-result">Input, scope and result</h2>
 <p>Pass a nonempty brief to <code>start</code>. The fixed review scope is <strong>buyer and pain</strong>,
@@ -53,6 +55,11 @@ has a distinct run identity. Replay snapshots also identify their selected
 findings, advisory comments, limitations, next steps and synthetic provenance.
 The <a href="../../recipes/oracle/review-contract.md">feedback contract</a> defines its
 fields and interpretation.</p>
+<p>Live snapshots use <code>mode: "live"</code> and include <code>provider_observation</code> after a
+successful refresh. That object contains only provider status, participant count,
+total cost, cost per participant and currency. It contains no report, expert
+response or review recommendation. Replay snapshots retain their <code>replay_case</code>
+field and omit <code>provider_observation</code>.</p>
 <h2 id="run-the-default-case">Run the default case</h2>
 <p>From a checkout installed with <code>uv sync --locked</code>, run:</p>
 <pre><code class="language-sh">uv run --no-sync terac-oracle start --brief &quot;Synthetic repair-shop appointment tool: demand and pricing are unproven.&quot;
@@ -123,6 +130,25 @@ print(delivered.feedback.recommendation)
 </code></pre>
 <p>Python and CLI use the same four actions. <code>inspect</code> reads without advancement;
 <code>respond</code> saves an answer; <code>resume</code> releases at most one event.</p>
+<h2 id="attach-to-one-reviewed-live-study">Attach to one reviewed live study</h2>
+<p>This optional path observes status and cost for one exact, previously reviewed
+study. It does not create or launch a study, retrieve expert feedback, or support
+linked live work. The binding file must contain the exact organization, project
+and opportunity identifiers plus SHA-256 hashes for the reviewed brief and full
+study definition. Keep it and the provider key outside Git.</p>
+<p>Install the connector dependencies and pass an absolute binding path before the
+CLI action:</p>
+<pre><code class="language-sh">uv sync --locked --extra connectors
+uv run --no-sync terac-oracle --oracle-live-binding /private/path/reviewed-binding.json start --brief &quot;Exact reviewed brief&quot; --mode live
+</code></pre>
+<p><code>start</code> validates the brief against the binding and saves a local checkpoint
+without reading credentials or contacting Terac. <code>inspect</code> remains local and
+unchanged. An explicit <code>resume</code> reads the provider status and cost. Configure
+<code>TERAC_API_KEY</code> through a trusted local secret mechanism for that process; the
+key is read only on that explicit refresh. A failed read leaves the saved run
+waiting and inspectable. See <a href="../terac-access.html">Terac access</a> for the binding
+fields and read limits. Synthetic transport tests do not establish authenticated
+provider conformance.</p>
 <h2 id="call-from-a-local-mcp-client">Call from a local MCP client</h2>
 <p>The optional <a href="../mcp.html">Cookbook MCP process</a> exposes discovery plus
 <code>oracle_start</code>, <code>oracle_inspect</code>, <code>oracle_respond</code> and <code>oracle_resume</code>. These call
@@ -171,10 +197,11 @@ rejections as a JSON error and exits with status 2.</p>
 <p>Schema validation and exact artifact/scope binding precede feedback delivery.
 Malformed or mismatched replay events cause workflow failure. A material finding cannot
 accompany <code>pass</code>.</p>
-<p>Replay stays default regardless of credentials; <code>--mode live</code> is rejected as
-<code>live_unavailable</code>. Disclosure, recruitment, spend, follow-up, payment, rejection
-and publication require declared authority. Feedback cannot grant it. Do not
-commit local checkpoints, private briefs or confidential responses.</p>
+<p>Replay stays default regardless of credentials. Without a configured reviewed
+binding, <code>--mode live</code> returns <code>live_unavailable</code>. Live reads cannot grant
+authority to disclose, recruit, spend, follow up, pay, reject or publish.
+Feedback cannot grant that authority. Do not commit local checkpoints, binding
+files, private briefs or confidential responses.</p>
 <p><a href="../architecture.html">Architecture</a> explains shared state and adapter boundaries.
 <a href="../contributing.html">Contributing</a> describes offline testing and new Recipes.</p>
       </div>
@@ -187,6 +214,7 @@ commit local checkpoints, private briefs or confidential responses.</p>
 <li><a href="#run-the-default-case">Run the default case</a></li>
 <li><a href="#select-another-outcome">Select another outcome</a></li>
 <li><a href="#use-the-same-interface-from-python">Use the same interface from Python</a></li>
+<li><a href="#attach-to-one-reviewed-live-study">Attach to one reviewed live study</a></li>
 <li><a href="#call-from-a-local-mcp-client">Call from a local MCP client</a></li>
 <li><a href="#decide-what-comes-next">Decide what comes next</a></li>
 <li><a href="#restart-and-updates">Restart and updates</a></li>

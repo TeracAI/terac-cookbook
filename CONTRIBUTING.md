@@ -40,9 +40,10 @@ Run the [Oracle walkthrough](docs/recipes/oracle.md#run-the-default-case) to see
 the existing caller contract. Keep local checkpoints in ignored `.tmp/` or a
 private directory outside the checkout.
 
-The `connectors` extra installs the locked HTTPX and MCP dependencies needed by this
-revision's stdio integration tests. It does not enable live provider work.
-See the [MCP guide](docs/mcp.md) before changing tool schemas or process setup.
+The `connectors` extra installs the locked HTTPX and MCP dependencies needed by
+this revision's stdio integration tests and optional read-only study attachment.
+Study creation and explicit launch are not shipped in this revision. See the
+[MCP guide](docs/mcp.md) before changing tool schemas or process setup.
 
 ## Build a Recipe
 
@@ -52,7 +53,7 @@ points to one canonical guide and any detailed domain contract. Include:
 - A concrete job, input, output and exact artifact/scope binding.
 - Observable waiting, inspection, clarification, completion and failure behavior.
 - A default replay with synthetic or explicitly cleared fixtures.
-- Permitted effects, required authority and unavailable live behavior.
+- Permitted effects, required authority and available or unavailable live behavior.
 - Public-interface tests and an invocation from a clean installation.
 
 Python defines execution. New recipes require explicit source registration at
