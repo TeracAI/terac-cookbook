@@ -1,10 +1,54 @@
-# Terac Cookbook
+<p align="center">
+  <a href="https://terac.com"><img src="docs/assets/brand/icon-tile.svg" alt="Terac" width="72"></a>
+</p>
 
-**Expert feedback. Inspectable workflows. Agent-owned next steps.**
+<h1 align="center">Terac Cookbook</h1>
 
-Build agent–expert workflows from runnable recipes, starting with **Oracle**:
-review a go-to-market brief, inspect scoped feedback, and decide what to do next.
-Try the complete synthetic replay locally—no Terac account, API key or expert spend.
+<p align="center"><strong>Expert feedback. Inspectable workflows. Agent-owned next steps.</strong></p>
+
+<p align="center">
+  <a href="#run-your-first-recipe">Run Oracle</a> ·
+  <a href="#connect-your-local-agent">Connect an agent</a> ·
+  <a href="#build-a-recipe">Contribute a recipe</a>
+</p>
+
+[Terac](https://terac.com) connects research teams, products and agents with
+on-demand human experts through a dashboard, REST API and MCP. **Cookbook** is an
+[MIT-licensed](LICENSE) collection of runnable, inspectable agent–expert workflows.
+Contribute a recipe with its own inputs and useful outputs, reusing the shared
+run mechanics and caller interfaces.
+
+## How recipes fit together
+
+Each **Recipe** owns its domain models, input/result meaning and validation.
+The shared **Runner** manages run identity, lifecycle and saved checkpoints;
+**adapters** supply execution events. Python and recipe CLIs call the Recipe
+directly. Inbound MCP uses explicit application composition: a catalog advertises
+registered recipe services, and recipe-owned tool bindings expose their actions.
+
+```mermaid
+flowchart LR
+    CLI[Python / recipe CLI] --> Recipe[Selected Recipe]
+    Agent[Agent / inbound MCP] --> App[Cookbook MCP composition]
+    App --> Recipe
+    Recipe --> Runner[Shared Runner]
+    Runner <--> State[Local checkpoints]
+    Runner <--> Replay[Replay adapter]
+```
+
+New recipes add their own domain code and explicit caller registrations while
+sharing the Runner. The [architecture](docs/architecture.md) explains the seams;
+[Contributing](CONTRIBUTING.md) shows how to extend and test them together.
+Replay is the supported execution path in this revision. Outbound Terac
+MCP/REST fulfillment is planned separately; live provider operations need a
+recipe-specific contract and adapter before they can be used.
+
+## First recipe: Oracle
+
+**Oracle** is the first shipped recipe and worked example: submit a go-to-market
+brief, inspect scoped feedback, and decide what to do next. Its GTM models belong
+to Oracle; other recipes define their own jobs and results. Try its complete
+**synthetic replay** locally—no Terac account, API key or expert spend.
 
 ![Oracle: start a saved run, inspect waiting, respond to clarification and resume to feedback. The calling agent owns revision and fresh linked work.](docs/assets/oracle-workflow.svg)
 
@@ -80,18 +124,7 @@ The [Cookbook agent skill](.agents/skills/terac-cookbook/SKILL.md) routes discov
 and shared workflow to recipe-local guidance. It is checkout guidance, not a
 claim that every package installation or MCP host installs skills automatically.
 
-## Find the right guide
-
-- [Documentation home](docs/index.md) — choose a runnable or architectural path.
-- [Recipe catalog](docs/recipes/index.md) — implemented examples and modes.
-- [Oracle](docs/recipes/oracle.md) — a GTM brief, feedback and the next decision.
-- [Architecture](docs/architecture.md) — recipes, runner, adapters and saved state.
-- [Local MCP](docs/mcp.md) — discovery, process setup and caller semantics.
-- [Contributing](CONTRIBUTING.md) and [recipe-creation skill](.agents/skills/recipe-creation/SKILL.md)
-  — proposal, agreed contract, explicit registration, tests and a focused PR.
-- [Read-only diagnostics](docs/terac-access.md) — check Terac access separately.
-
-## Build a recipe, not another runtime
+## Build a recipe
 
 Propose a concrete input, useful output, waiting/failure cases and offline
 demonstration. The proposal YAML collects an idea; Python implements it.
@@ -100,11 +133,28 @@ adapters. Register the intended Python/CLI/MCP surfaces explicitly and prove
 restart, artifact binding and isolation from existing recipes. Oracle is the
 first recipe, not a universal schema for every expert workflow.
 
-Use the contribution guide's offline checks and review path before a pull request.
+Start with [Contributing](CONTRIBUTING.md) and the
+[recipe-creation skill](.agents/skills/recipe-creation/SKILL.md), which links the
+implementation, registration points and caller tests. Use the contribution
+guide's offline checks and review path before a pull request.
 Passing local tests, hosted CI and enforced merge checks are separate evidence.
 Do not include credentials, private checkpoints or uncleared expert material.
 
-## Know what is—and is not—available
+## Explore the docs
+
+- [Documentation home](docs/index.md) and [recipe catalog](docs/recipes/index.md)
+  — choose an example and its supported modes.
+- [Oracle guide](docs/recipes/oracle.md) — inputs, feedback, Python/CLI calls and
+  saved-run recovery.
+- [Architecture](docs/architecture.md) — recipes, runner, adapters and state.
+- [Local MCP](docs/mcp.md) — discovery, process setup and caller semantics.
+- [Read-only Terac diagnostics](docs/terac-access.md) — check access independently
+  of a Recipe Run; study creation and launch are not supported in this revision.
+
+The generated HTML reading views under `docs/` offer the same guides with local
+navigation and diagrams. Markdown is the canonical source.
+
+## Supported today
 
 This baseline provides local Python, CLI and stdio MCP replay. Live expert
 fulfillment remains unavailable; read-only diagnostics do not enable it.
