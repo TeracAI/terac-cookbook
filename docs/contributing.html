@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: CONTRIBUTING.md; source-sha256: 98ec1ff0065028f4cfe52d2b335a1faef14040a9eee77d5155a8fa2993917eb2 -->
+<!-- source: CONTRIBUTING.md; source-sha256: b5256f60357e7f39685caefa1019f06290a8c17c24e3803eb92e780b8b3e25d0 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -31,7 +31,7 @@
   <div class="page-layout">
     <article>
       <header class="page-header">
-        <p class="eyebrow">Cookbook 0.2.0.dev1</p>
+        <p class="eyebrow">Cookbook 0.2.0</p>
         <h1 id="contributing">Contributing</h1>
         <p class="lead">Help make agent–expert workflows easy to run, inspect and understand. A useful
 contribution can be a clearer example, a bug fix, or a small new Recipe with an
@@ -70,9 +70,9 @@ the existing caller contract. Keep local checkpoints in ignored <code>.tmp/</cod
 private directory outside the checkout. See <a href="setup.html">local setup</a> for
 connector and checkpoint guidance.</p>
 <p>The <code>connectors</code> extra installs the locked HTTPX and MCP dependencies needed by
-this revision's stdio integration tests and optional read-only study attachment.
-Study creation and explicit launch are not shipped in this revision. See the
-<a href="mcp.html">MCP guide</a> before changing tool schemas or process setup.</p>
+this revision's stdio integration tests, optional read-only study attachment,
+and Oracle's opt-in study-creation adapter. See the <a href="mcp.html">MCP guide</a>
+before changing tool schemas or process setup.</p>
 <h2 id="build-a-recipe">Build a Recipe</h2>
 <p>Each implemented Recipe lives under <code>recipes/&lt;recipe-id&gt;/</code>. Its short README
 points to one canonical guide and any detailed domain contract. Include:</p>
@@ -154,7 +154,7 @@ establish automatic discovery or application-client compatibility.</p>
   </div>
 </main>
 <footer class="site-footer">
-  <p>Terac Cookbook 0.2.0.dev1 · Local, offline reading view.</p>
+  <p>Terac Cookbook 0.2.0 · Local, offline reading view.</p>
   <p class="source-note">Markdown is canonical. <a href="../CONTRIBUTING.md">Read the source</a>.</p>
 </footer>
 </body>

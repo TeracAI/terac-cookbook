@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/architecture.md; source-sha256: c168f19dfc8496a3ce5b710146e08da6d213f06a5db3eaf1b5aa41a179616651 -->
+<!-- source: docs/architecture.md; source-sha256: 31148b8e5b94c4b90388d5f3817e14f976aa6b67725da94cf52fc6ca6afb4fd8 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -31,7 +31,7 @@
   <div class="page-layout">
     <article>
       <header class="page-header">
-        <p class="eyebrow">Cookbook 0.2.0.dev1</p>
+        <p class="eyebrow">Cookbook 0.2.0</p>
         <h1 id="architecture">Architecture</h1>
         <p class="lead">A Recipe defines the work. The shared Runner owns lifecycle and saved progress.
 Adapters supply events without taking over the Recipe's meaning.</p>
@@ -84,6 +84,10 @@ execution path and uses synthetic events without provider requests or expert spe
 <td>Bounded REST context and hosted MCP discovery/context reads; operator-only and separate from Oracle</td>
 </tr>
 <tr>
+<td>Oracle study-creation adapter</td>
+<td>Opt-in feasibility, draft and separate launch requests through the concrete Terac REST seam</td>
+</tr>
+<tr>
 <td>Future fulfillment adapter</td>
 <td>A verified task/report binding and declared authority before any expert-work effect</td>
 </tr>
@@ -98,10 +102,11 @@ is the only product Recipe today. Shared behavior should grow only when another
 product Recipe demonstrates a need for it.</p>
 <h2 id="delivery-scope">Delivery scope</h2>
 <p>The v0.1–v1.0 baseline is local Oracle replay, direct Python/CLI access,
-<code>cookbook_app</code>-composed local MCP, read-only Terac diagnostics, packaged
-installation and contributor acceptance. v2.0+ remains optional and should follow
-demonstrated use; it is not part of the current runtime contract.</p>
-<h2 id="four-actions-explicit-progress">Four actions, explicit progress</h2>
+<code>cookbook_app</code>-composed local MCP, read-only Terac diagnostics, an explicitly
+opt-in Oracle study-creation adapter, packaged installation and contributor
+acceptance. v2.0+ remains optional and should follow demonstrated use; it is not
+part of the current runtime contract.</p>
+<h2 id="four-run-actions-and-a-separate-launch">Four run actions and a separate launch</h2>
 <table>
 <thead>
 <tr>
@@ -112,7 +117,7 @@ demonstrated use; it is not part of the current runtime contract.</p>
 <tbody>
 <tr>
 <td><code>start</code></td>
-<td>Bind an exact input to a new run and save its initial waiting state</td>
+<td>Bind an exact input and save its mode-appropriate initial state; live study creation starts at <code>study_prepared</code> without a provider call</td>
 </tr>
 <tr>
 <td><code>inspect</code></td>
@@ -124,13 +129,17 @@ demonstrated use; it is not part of the current runtime contract.</p>
 </tr>
 <tr>
 <td><code>resume</code></td>
-<td>Reattach and release at most one replay event; paused or terminal work returns saved state</td>
+<td>Reattach and advance at most one replay event or one explicitly configured live step (status/cost read, feasibility request or draft preparation); paused or terminal work returns saved state</td>
+</tr>
+<tr>
+<td><code>launch</code></td>
+<td>Separately launch an explicitly prepared study after fresh confirmation and a current draft read</td>
 </tr>
 </tbody>
 </table>
 <p>Linked work is another <code>start</code>, carrying <code>parent_id</code> and an explicit <code>follow_up</code>
 or <code>new_query</code> intent. It creates fresh work, preserves the parent and does not
-inherit the parent's recommendation. These are still four caller actions.</p>
+inherit the parent's recommendation. Linked work adds no action beyond start; replay uses four replay actions, while study launch is separate.</p>
 <p>The caller retains its run identifier and chooses when to reattach. Saving a
 checkpoint does not wake an agent or schedule a worker.</p>
 <h2 id="state-is-different-from-a-recommendation">State is different from a recommendation</h2>
@@ -161,22 +170,27 @@ a provider such as Terac. These directions have distinct authentication and
 deployment responsibilities.</p>
 <p>The baseline exposes inbound Python, CLI and optional local-stdio MCP calls.
 Replay is the default. An optional reviewed binding enables a read-only
-attachment to one exact study; credentials alone never select live operation or
+attachment to one exact study; a separate <code>--terac-study-creation</code> opt-in enables
+the Oracle creation workflow. Credentials alone never select live operation or
 establish content compatibility.</p>
 <p>The MCP process owns protocol schemas, bounded error responses and serialization
 within one process. It exposes <code>cookbook_list_recipes</code> and <code>oracle_start</code>,
-<code>oracle_inspect</code>, <code>oracle_respond</code>, <code>oracle_resume</code>. It calls Oracle's existing
-methods; it adds no second execution model. Discovery reports Oracle and its
-replay case catalog and whether a reviewed live binding is configured. Discovery
-does not read or advance runs.</p>
+<code>oracle_inspect</code>, <code>oracle_respond</code>, <code>oracle_resume</code> and <code>oracle_launch</code>. It calls
+Oracle's existing methods; it adds no second execution model. Discovery reports
+Oracle and its replay case catalog and whether a reviewed live binding is
+configured. Discovery does not read or advance runs.</p>
 <p>Inbound Cookbook MCP is separate from outbound Terac MCP/REST and the provider's
-hosted connector. Without a reviewed binding, the Cookbook process makes no
-provider requests and reads no provider credentials. With one configured,
-attaching and inspecting remain local; an explicit <code>resume</code> performs bounded
-read-only context and exact-study status/cost reads. It does not create or launch
-work or retrieve expert feedback. SDK stdio checks do not establish acceptance
-inside a named client application. See the <a href="mcp.html">MCP contract</a> for response
-formats and launch limits.</p>
+hosted connector. Without an explicit live mode and the required opt-in, the
+Cookbook process makes no provider requests and reads no provider credentials.
+With a read-only binding, an explicit <code>resume</code> performs bounded context and
+exact-study status/cost reads. With study creation enabled, explicit <code>resume</code>
+may submit feasibility or create a draft; it never launches. <code>oracle_launch</code> is
+separate and requires fresh confirmation after the caller reviews the current
+quote, links, scope, total cost and cap. A fresh draft read is only a pre-launch
+check; Terac exposes no atomic price/cap condition. This adapter does not retrieve
+expert feedback. SDK stdio checks do not establish acceptance inside a named
+client application. See the <a href="mcp.html">MCP contract</a> for response formats and
+launch limits.</p>
 <p>Expert fulfillment still needs an agreed caller contract and observed evidence
 for submission, progress, clarification, substantive delivery, errors and
 uncertain writes. A provider status or successful login does not establish a
@@ -188,6 +202,8 @@ rights and privacy clearance for their exact version and audience.</p>
 <p>The Python context reader performs one bounded REST read and discards provider
 values after shape validation. The Oracle study reader uses a separately reviewed
 binding and only explicit resumption to observe safe status and cost fields.
+Study creation and launch use a distinct Oracle-owned workflow and concrete REST
+adapter; the generic Runner, catalog and MCP transport stay neutral.
 Windows operator scripts provide separate credential setup and a bounded
 REST/hosted-MCP diagnostic. None of these reads submit work or retrieve a report.
 See <a href="terac-access.html">Terac access</a>.</p>
@@ -207,7 +223,7 @@ concrete workflow and acceptance evidence.</p>
 <ul>
 <li><a href="#keep-the-responsibilities-clear">Keep the responsibilities clear</a></li>
 <li><a href="#delivery-scope">Delivery scope</a></li>
-<li><a href="#four-actions-explicit-progress">Four actions, explicit progress</a></li>
+<li><a href="#four-run-actions-and-a-separate-launch">Four run actions and a separate launch</a></li>
 <li><a href="#state-is-different-from-a-recommendation">State is different from a recommendation</a></li>
 <li><a href="#replay-restart-and-compatibility">Replay, restart and compatibility</a></li>
 <li><a href="#transport-and-provider-boundaries">Transport and provider boundaries</a></li>
@@ -219,7 +235,7 @@ concrete workflow and acceptance evidence.</p>
   </div>
 </main>
 <footer class="site-footer">
-  <p>Terac Cookbook 0.2.0.dev1 · Local, offline reading view.</p>
+  <p>Terac Cookbook 0.2.0 · Local, offline reading view.</p>
   <p class="source-note">Markdown is canonical. <a href="architecture.md">Read the source</a>.</p>
 </footer>
 </body>

@@ -3,15 +3,17 @@
 Expose Oracle to a local agent through Model Context Protocol (MCP). The packaged
 `cookbook_app` uses standard input/output (stdio) and explicitly registers Oracle
 with the recipe catalog. It calls the same Recipe interface as Python and CLI
-callers. Replay is the default; a reviewed binding enables read-only observation
-of one exact study. Live expert fulfillment is unavailable.
+callers. Replay is the default. A reviewed binding enables read-only observation
+of one exact study; a separate `--terac-study-creation` opt-in enables Oracle's
+feasibility and draft workflow. Live expert feedback delivery is unavailable.
 
 This is an **inbound Cookbook adapter**: a client invokes Cookbook. It is separate
 from outbound Terac MCP/REST and Terac's hosted provider connector. Without a
-reviewed binding, it performs no provider requests and reads no provider
-credentials. With a binding, only explicit `oracle_resume` performs bounded
-read-only context and exact-study status/cost reads. No tool creates, launches or
-delivers expert work.
+reviewed binding or study-creation opt-in, it performs no provider requests and
+reads no provider credentials. An explicit live `oracle_resume` may read bound
+study status/cost or, with study creation enabled, submit one feasibility or draft
+step. It never launches. `oracle_launch` is a separate effectful tool that needs
+fresh explicit confirmation of the current review summary.
 
 ## Install and launch
 
@@ -24,7 +26,9 @@ uv sync --locked --extra connectors
 Configure a local MCP host to launch this process. Use the installed environment's
 absolute Python path so launch does not depend on a shell's current directory.
 The example enables the optional read-only attachment; for replay-only use, omit
-the binding flag and its path:
+the binding flag and its path. To enable the separate study-creation adapter, add
+`--terac-study-creation`; this configures the capability but does not make a
+provider request at startup:
 
 ```text
 command: ABSOLUTE_PATH_TO_CHECKOUT/.venv/bin/python
@@ -49,29 +53,40 @@ terac-cookbook-mcp --state-dir ABSOLUTE_PATH_TO_PRIVATE_STATE_DIRECTORY
 ```
 
 The state directory is required and must be absolute; relative paths are rejected
-at startup. Supply `--oracle-live-binding` only when enabling the read-only study
-attachment; its path must also be absolute. Provide `TERAC_API_KEY` to the server
-through a trusted local secret mechanism. The key is read only when an explicit
-live `oracle_resume` needs it. Tools cannot choose a state path or pass
-credentials. Standard output carries MCP protocol messages; the process adds no
-HTTP server, tunnel or remote hosting.
+at startup. Supply `--oracle-live-binding` only for read-only attachment to an
+existing study; its path must also be absolute. `--terac-study-creation` is a
+separate opt-in. A live `oracle_start` with `study_request` saves a local
+checkpoint; a later explicit `oracle_resume` performs at most one feasibility or
+draft provider step. Provide `TERAC_API_KEY` through a trusted local secret
+mechanism. The key is read only when an explicit provider step needs it. Tools
+cannot choose a state path or pass credentials. Standard output carries MCP
+protocol messages; the process adds no HTTP server, tunnel or remote hosting.
 
 ## Discover and call
 
 | Tool | Inputs and behavior |
 |---|---|
 | `cookbook_list_recipes` | No arguments; reports Oracle modes, binding availability, default replay case and packaged case descriptors |
-| `oracle_start` | `brief`; optional `mode`, `parent_id`, `intent`, `replay_case`; creates a saved waiting run or local live attachment |
+| `oracle_start` | `brief`; optional `mode`, `parent_id`, `intent`, `replay_case`, `study_request`; saves a run or local live study request without a provider call |
 | `oracle_inspect` | `run_id`; reads saved state without advancing |
 | `oracle_respond` | `run_id`, `answer`; records a nonempty answer to a pending clarification |
-| `oracle_resume` | `run_id`; releases at most one replay event or explicitly refreshes a live attachment; paused/terminal state is unchanged |
+| `oracle_resume` | `run_id`; releases at most one replay event or performs one explicit live provider step; with study creation enabled, may request feasibility or create a draft, never launches |
+| `oracle_launch` | `run_id`, `expected_total_cost_cents`, `maximum_total_cost_cents`, `scope_sha256`, `confirmation`; separately launches after fresh review and draft readback |
+
+Before `oracle_launch`, show the user the feasibility quote and dashboard link,
+draft link, audience, task, screening mode, total cost and cap. The tool rereads
+the draft and checks its current total immediately before launch. Terac exposes
+no atomic price/cap condition, so this is a local pre-launch check rather than a
+transactional spending guarantee; Terac controls actual pricing and publication.
 
 `mode` defaults to `replay`; credentials alone do not select live operation.
-`mode: "live"` requires the startup binding and creates a local checkpoint
-without a provider request. The next explicit `oracle_resume` reads one bound
-study and can return only status, participant count and cost fields; no report or
-feedback is retrieved. Live linked work is unavailable. Omitted or null
-`replay_case` selects `inconclusive`; other packaged selectors are
+`mode: "live"` with the read-only attachment requires the startup binding and
+creates a local checkpoint without a provider request. The next explicit
+`oracle_resume` reads one bound study and can return only status, participant
+count and cost fields; no report or feedback is retrieved. A study-creation
+request requires `--terac-study-creation` and advances only on explicit resume.
+Neither start nor resume launches. Live linked work is unavailable. Omitted or
+null `replay_case` selects `inconclusive`; other packaged selectors are
 `pass_with_comments` and `fail`. A literal string such as `"null"` is text, not
 an omitted selector.
 
@@ -137,8 +152,10 @@ and the linked host documentation. Those configuration examples do not establish
 that a named client has been tested with this Cookbook server.
 
 For each client, record its version and the installed server revision, then
-exercise discovery, all four actions, unchanged inspection, restart and linked
-work. Advertise only clients whose complete path has been verified.
+exercise discovery, the four replay actions, unchanged inspection, restart and
+linked work; verify the separate launch tool's schema without performing an
+unapproved live launch. Advertise only clients whose complete path has been
+verified.
 
 The repository's [MCP integration tests](../tests/test_cookbook_mcp.py) use actual
 SDK stdio with synthetic data:

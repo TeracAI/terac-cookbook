@@ -33,7 +33,7 @@ linked work and restart behavior.
 
 Use the installed `terac-cookbook-mcp` entrypoint with an absolute local state
 directory. The [MCP guide](mcp.md) explains the stdio launch configuration,
-discovery and the four Oracle actions. This is the inbound Cookbook MCP process;
+discovery and the four replay actions. This is the inbound Cookbook MCP process;
 it does not call Terac.
 
 ## Show the separate Terac diagnostics
@@ -49,5 +49,4 @@ They do not submit expert work or return a report to Oracle. See
 It demonstrates the packaged local workflow, explicit caller progression, saved
 state, recipe-owned feedback and optional inbound MCP. An authorized operator
 may separately demonstrate the existing Terac diagnostics. Neither the replay
-nor those diagnostics establishes real expert delivery, Oracle live fulfillment
-or production hosting.
+nor those diagnostics establishes expert-report delivery or production hosting.

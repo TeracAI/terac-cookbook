@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../assets/site.css">
 </head>
 <body>
-<!-- source: docs/recipes/index.md; source-sha256: 1611e81e369d209ae0ffc7d579bd05542a84274aac4b5c129bf27300b9fef13c -->
+<!-- source: docs/recipes/index.md; source-sha256: 683a070dfdcb7dbf3c0be85692b66c243ddafee91f2f22e009de82194bc1b67d -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -31,7 +31,7 @@
   <div class="page-layout">
     <article>
       <header class="page-header">
-        <p class="eyebrow">Cookbook 0.2.0.dev1</p>
+        <p class="eyebrow">Cookbook 0.2.0</p>
         <h1 id="recipes">Recipes</h1>
         <p class="lead">A Recipe is a runnable agent–expert workflow with understandable input, output,
 permitted effects and replay data. The catalog currently contains one implemented
@@ -43,10 +43,10 @@ Recipe.</p>
 willingness to pay, and channel fit. The calling agent decides how to use it.</p>
 <ul>
 <li><strong>Identifier:</strong> <code>oracle</code></li>
-<li><strong>Available mode:</strong> synthetic offline replay</li>
+<li><strong>Available modes:</strong> synthetic offline replay by default; explicitly configured live status/cost reads or opt-in feasibility/draft preparation; launch requires separate fresh confirmation</li>
 <li><strong>Callers:</strong> Python, <code>terac-oracle</code>, and optional <a href="../mcp.html">local MCP</a></li>
 <li><strong>Input:</strong> a concise brief with its claims and evidence</li>
-<li><strong>Output:</strong> exact-brief feedback, including a recommendation and its limitations</li>
+<li><strong>Output:</strong> Replay returns exact-brief feedback and its limitations; live paths return bounded study, feasibility and draft observations, not expert feedback or reports</li>
 <li><strong>Cases:</strong> <code>pass_with_comments</code>, <code>fail</code>, and default <code>inconclusive</code></li>
 </ul>
 <p><a href="oracle.html">Run Oracle</a> · <a href="../../recipes/oracle/review-contract.md">Read its feedback contract</a></p>
@@ -74,7 +74,7 @@ registration; adding YAML does not create executable behavior. Follow the
   </div>
 </main>
 <footer class="site-footer">
-  <p>Terac Cookbook 0.2.0.dev1 · Local, offline reading view.</p>
+  <p>Terac Cookbook 0.2.0 · Local, offline reading view.</p>
   <p class="source-note">Markdown is canonical. <a href="index.md">Read the source</a>.</p>
 </footer>
 </body>

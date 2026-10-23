@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/index.md; source-sha256: 1488f6de4a2e042939822ce2ceda889422e082f4bf226a072168c39e0b866c7e -->
+<!-- source: docs/index.md; source-sha256: 2dc055acf96d963556dddf957bbdd471eb740e70c2a78e192ad92a0c0f252b92 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -31,7 +31,7 @@
   <div class="page-layout">
     <article>
       <header class="page-header">
-        <p class="eyebrow">Cookbook 0.2.0.dev1</p>
+        <p class="eyebrow">Cookbook 0.2.0</p>
         <h1 id="terac-cookbook">Terac Cookbook</h1>
         <p class="lead"><strong>Build a workflow you can inspect.</strong> Terac Cookbook shows how an agent can request
 expert feedback, wait for delivery, and decide how to use the result.</p>
@@ -49,27 +49,35 @@ locally to understand the complete workflow without an account or expert spend.<
   local replay workflow and the available read-only Terac diagnostics.</li>
 <li><strong>Run the example:</strong> <a href="recipes/oracle.html">Oracle</a> walks through waiting,
   clarification, feedback and linked work.</li>
+<li><strong>Create a study:</strong> <a href="recipes/oracle.html#explicit-study-creation-and-launch">Oracle's opt-in study flow</a>
+  covers feasibility, draft preparation and separately confirmed launch; report
+  delivery is not included.</li>
 <li><strong>Understand the design:</strong> <a href="architecture.html">Architecture</a> explains how recipes,
   the Runner, replay and checkpoints fit together, with the current delivery scope.</li>
 <li><strong>Browse the catalog:</strong> <a href="recipes/index.html">Recipes</a> lists implemented examples
   and their available modes.</li>
 <li><strong>Connect a local agent:</strong> <a href="mcp.html">Local MCP</a> exposes discovery and the same
-  four Oracle actions through stdio.</li>
+  four replay actions and the separate launch tool through stdio.</li>
 <li><strong>Add or improve an example:</strong> <a href="contributing.html">Contributing</a> takes one
   proposal through source, offline checks and review.</li>
 </ul>
 <h2 id="what-this-baseline-delivers">What this baseline delivers</h2>
-<p>Oracle has four caller actions: <code>start</code>, <code>inspect</code>, <code>respond</code> and <code>resume</code>.
-Three synthetic cases demonstrate pass with comments, fail and inconclusive
-feedback. Saved local state supports inspection and deliberate resumption after
-a caller exits. Linked work starts a fresh run while preserving earlier feedback.</p>
+<p>Oracle's four replay workflow actions are start, inspect, respond and resume.
+A separate opt-in flow supports feasibility, draft preparation and confirmed
+study launch; it does not deliver expert reports. The MCP catalog also offers
+recipe discovery. Three synthetic cases demonstrate pass with comments, fail
+and inconclusive feedback. Saved local state supports inspection and deliberate
+resumption after a caller exits. Linked work uses another start while preserving
+earlier feedback.</p>
 <p>The agent owns the next decision: explain the result, revise the brief, continue
 the task or request more scoped work. Delivery does not require an automatic
 rewrite. A new brief has no inherited verdict.</p>
 <h2 id="read-the-boundaries">Read the boundaries</h2>
-<p>This baseline provides Python, CLI and optional local-stdio MCP replay; live
-expert fulfillment is unavailable. Replay timing and content are scripted. They demonstrate software
-behavior, not real expert judgment or market validation.</p>
+<p>Replay is the default for Python, CLI and local stdio MCP. Explicit opt-in Oracle
+study creation supports feasibility, draft preparation and separate confirmed
+launch. Expert-report retrieval and feedback delivery remain unavailable. Replay
+timing and content are scripted; they demonstrate software behavior, not real
+expert judgment or market validation.</p>
 <p>MCP application-client acceptance is separate from SDK stdio checks. Codex,
 Claude Code and other clients must be verified individually before advertising
 support. Remote hosting is outside this local process contract.</p>
@@ -80,7 +88,9 @@ private and preserve the exact state directory when restarting.</p>
 generated for offline reading; they use no external assets or browser scripts.</p>
 <h2 id="check-terac-access-separately">Check Terac access separately</h2>
 <p><a href="terac-access.html">Read-only Terac diagnostics</a> expose sanitized context facts.
-They do not enable Oracle live fulfillment.</p>
+Oracle's separate opt-in study flow can create and launch work, but it does not
+retrieve expert reports. See the
+<a href="recipes/oracle.html#explicit-study-creation-and-launch">Oracle study guide</a>.</p>
       </div>
     </article>
     <nav class="toc" aria-label="On this page">
@@ -97,7 +107,7 @@ They do not enable Oracle live fulfillment.</p>
   </div>
 </main>
 <footer class="site-footer">
-  <p>Terac Cookbook 0.2.0.dev1 · Local, offline reading view.</p>
+  <p>Terac Cookbook 0.2.0 · Local, offline reading view.</p>
   <p class="source-note">Markdown is canonical. <a href="index.md">Read the source</a>.</p>
 </footer>
 </body>

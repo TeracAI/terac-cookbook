@@ -1,8 +1,11 @@
 # Local setup
 
-Use a reviewed Git checkout to run the Cookbook examples. The supported local
-workflow in this revision is synthetic Oracle replay; read-only Terac diagnostics
-have a separate contract in the [Terac access guide](terac-access.md).
+Use a reviewed Git checkout to run the Cookbook examples. Replay remains the
+default. A separate Oracle opt-in supports live feasibility, draft preparation
+and launch after fresh confirmation; it does not deliver expert feedback.
+Read-only diagnostics and exact-study attachment have separate contracts in the
+[Terac access guide](terac-access.md) and
+[Oracle guide](recipes/oracle.md#explicit-study-creation-and-launch).
 
 ## Install from a checkout
 
@@ -64,5 +67,6 @@ local MCP server. Do not run `uv lock` as part of an update. Check the
 [restart and update notes](recipes/oracle.md#restart-and-updates) before moving
 saved work between revisions.
 
-This repository describes source checkout and local wheel build workflows. It
-does not claim a PyPI release; see the version in [package metadata](../pyproject.toml).
+Package metadata for this source revision uses version 0.2.0. This repository
+documents local source-checkout and wheel workflows; it does not claim PyPI
+publication. See the [package metadata](../pyproject.toml).

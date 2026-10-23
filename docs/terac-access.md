@@ -1,9 +1,11 @@
-# Read-only Terac access
+# Terac access
 
-These diagnostics check a connection and response shape. They do not create or
-launch a study, recruit or pay an expert, approve labor, or retrieve expert
-feedback. Oracle remains replay by default, including when a key is present; its
-separate read-only live attachment requires an explicit reviewed binding.
+This guide covers read-only diagnostics and Oracle's separate opt-in study-
+creation adapter. Diagnostics and the reviewed exact-study attachment do not
+create or launch work, approve labor, or retrieve expert feedback. The study-
+creation adapter can request feasibility, prepare a draft and perform a separate
+explicit launch after fresh confirmation. Oracle remains replay by default,
+including when a key is present.
 
 ## Choose the access path
 
@@ -129,6 +131,27 @@ The reader does not call a submission/report retrieval tool or expose expert
 content, and does not invoke creation, launch, clarification, recruitment or
 payment tools. A failed read leaves the checkpoint unchanged.
 Replay remains the default even when a key or binding is configured.
+
+## Oracle study-creation adapter
+
+This separate opt-in adapter can request feasibility and prepare a draft during
+explicit `resume` calls, then launch only through a separate `oracle_launch` MCP
+tool or `terac-oracle launch` CLI action after fresh confirmation. The initial live `start` saves the request
+locally without a provider call. It reads `TERAC_API_KEY` lazily when an explicit
+provider step runs. Keep replay as the default; a key or adapter configuration
+alone never selects live mode. Before launch, Cookbook rereads the draft and
+checks the current total against the reviewed quote and caller cap. Terac exposes
+no atomic price/cap condition, so this local pre-launch check is not a
+transactional spending guarantee; Terac controls actual pricing and publication.
+This adapter does not retrieve expert reports or feedback.
+
+Oracle validates country audience filters against a dated provider-option
+snapshot: 242 two-letter country-option values returned by
+`terac_get_filter_options` on 23 October 2026 for `multi_select--country`.
+The sorted, newline-delimited value digest is
+`b89860570553322b00fee8cebeb3ea578ff03ee02be9c7abcf594a39bc2c4804`. This is a
+strict compatibility check against that captured list, not a live lookup.
+Unknown values are rejected before checkpoint persistence.
 
 ## Tests and remaining live work
 

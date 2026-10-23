@@ -54,6 +54,7 @@ async def smoke_mcp(python: Path, work: Path, environment: dict[str, str]) -> No
             "oracle_inspect",
             "oracle_respond",
             "oracle_resume",
+            "oracle_launch",
         }
         catalog_result = await client.call_tool("cookbook_list_recipes", {})
         assert catalog_result.isError is False

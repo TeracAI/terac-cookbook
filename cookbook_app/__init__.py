@@ -1,6 +1,7 @@
 """Default application composition for the Terac Cookbook package."""
 
 import argparse
+import os
 from pathlib import Path
 
 from adapters.cookbook_mcp import CookbookMCP, create_server
@@ -16,6 +17,7 @@ def create_default_server(
     state_dir: Path,
     *,
     live_binding: OracleLiveBinding | None = None,
+    study_adapter=None,
     credential_provider=None,
     live_transport_factory=None,
 ) -> CookbookMCP:
@@ -24,6 +26,7 @@ def create_default_server(
         Oracle(
             state_dir,
             live_binding=live_binding,
+            study_adapter=study_adapter,
             credential_provider=credential_provider,
             live_transport_factory=live_transport_factory,
         )
@@ -42,6 +45,11 @@ def main() -> int:
         type=Path,
         help="absolute path to one reviewed, read-only Terac study binding",
     )
+    parser.add_argument(
+        "--terac-study-creation",
+        action="store_true",
+        help="enable Oracle's explicit Terac feasibility, draft, and launch calls",
+    )
     args = parser.parse_args()
     if not args.state_dir.is_absolute():
         parser.error("--state-dir must be absolute")
@@ -55,5 +63,14 @@ def main() -> int:
         )
     except StudyReadError as exc:
         parser.error(exc.code)
-    create_default_server(args.state_dir, live_binding=live_binding).run(transport="stdio")
+    study_adapter = None
+    if args.terac_study_creation:
+        from adapters.terac_studies import TeracStudies
+
+        study_adapter = TeracStudies(lambda: os.environ.get("TERAC_API_KEY"))
+    create_default_server(
+        args.state_dir,
+        live_binding=live_binding,
+        study_adapter=study_adapter,
+    ).run(transport="stdio")
     return 0

@@ -7,8 +7,10 @@ description: Discover and run implemented Terac Cookbook recipes through Python,
 
 [Terac](https://terac.com) provides on-demand human experts through a
 dashboard, REST API and MCP. Cookbook supplies runnable examples of agents
-working with expert feedback. This revision ships **Oracle synthetic replay**;
-it does not create or launch live studies.
+working with expert feedback. Replay remains Oracle's default. A separate opt-in supports live feasibility,
+draft preparation and launch after fresh confirmation. It does not deliver
+expert feedback or retrieve reports; see Oracle's guide for the exact caller
+contract.
 
 **Inbound MCP** is your agent calling the local Cookbook stdio server.
 **Outbound MCP/REST** is a call to Terac's provider interface. They have different
@@ -46,8 +48,8 @@ or result fields; follow the selected recipe's schemas.
 - `start` validates input and opens fresh saved work.
 - `inspect` reads saved state without polling or advancing it.
 - `respond` records an answer to a pending clarification without progressing work.
-- `resume` explicitly requests progression. Waiting may remain waiting; retain
-  the run rather than starting a replacement or busy-looping.
+- Explicit resume requests progression. Waiting may remain waiting; retain the
+  run rather than starting a replacement or busy-looping.
 - Supported linked work is a fresh `start` with the documented parent and intent;
   it preserves the earlier result without inheriting its verdict.
 
@@ -68,11 +70,13 @@ authority for disclosure, recruitment, spend, payment or publication.
 
 - **Oracle revision or linked work:** follow
   [the next-decision guide](../../../docs/recipes/oracle.md#decide-what-comes-next).
-- **Terac access or study work:** the supported provider path here is
-  [read-only diagnostics](../../../docs/terac-access.md), separate from Oracle.
-  [Remaining live work](../../../docs/terac-access.md#tests-and-remaining-live-work)
-  describes the unimplemented fulfillment boundary; do not advertise study
-  creation, launch or report retrieval as Cookbook actions in this revision.
+- **Terac access or study work:** use
+  [read-only diagnostics](../../../docs/terac-access.md) for connection facts and
+  Oracle's [study creation and launch guide](../../../docs/recipes/oracle.md#explicit-study-creation-and-launch)
+  for the separately opted-in live flow. Explicit resume performs bounded
+  feasibility or draft steps; launch requires fresh confirmation. Expert-report
+  retrieval and delivery remain unavailable. Do not present study creation or
+  launch as expert feedback.
 - **A new recipe or changed caller contract:** use
   [Contributing](../../../CONTRIBUTING.md) and the
   [recipe-creation skill](../recipe-creation/SKILL.md), which links the actual

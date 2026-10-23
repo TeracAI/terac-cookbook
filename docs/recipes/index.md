@@ -10,10 +10,10 @@ Recipe.
 willingness to pay, and channel fit. The calling agent decides how to use it.
 
 - **Identifier:** `oracle`
-- **Available mode:** synthetic offline replay
+- **Available modes:** synthetic offline replay by default; explicitly configured live status/cost reads or opt-in feasibility/draft preparation; launch requires separate fresh confirmation
 - **Callers:** Python, `terac-oracle`, and optional [local MCP](../mcp.md)
 - **Input:** a concise brief with its claims and evidence
-- **Output:** exact-brief feedback, including a recommendation and its limitations
+- **Output:** Replay returns exact-brief feedback and its limitations; live paths return bounded study, feasibility and draft observations, not expert feedback or reports
 - **Cases:** `pass_with_comments`, `fail`, and default `inconclusive`
 
 [Run Oracle](oracle.md) · [Read its feedback contract](../../recipes/oracle/review-contract.md)

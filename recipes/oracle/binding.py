@@ -21,12 +21,16 @@ class OracleRecipeService:
             "name": self.name,
             "modes": modes,
             "live_available": self.oracle.live_available,
+            "study_creation_available": self.oracle.study_creation_available,
             **(
                 {
                     "live_limit": (
-                        "Read-only status and cost observations for one reviewed study; "
-                        "no launch or expert feedback."
+                        "Oracle-only study creation and separately confirmed launch; "
+                        "no report retrieval or expert feedback delivery."
                     )
+                    if self.oracle.study_creation_available
+                    else "Read-only status and cost observations for one reviewed study; "
+                    "no launch or expert feedback."
                 }
                 if self.oracle.live_available
                 else {}
@@ -37,7 +41,7 @@ class OracleRecipeService:
     def start(self, request: object) -> Snapshot:
         if not isinstance(request, dict) or "brief" not in request:
             raise ValueError("Oracle start requires a brief")
-        allowed = {"brief", "mode", "parent_id", "intent", "replay_case"}
+        allowed = {"brief", "mode", "parent_id", "intent", "replay_case", "study_request"}
         if set(request) - allowed:
             raise ValueError("Oracle start contains unsupported fields")
         return self.oracle.start(
@@ -46,6 +50,7 @@ class OracleRecipeService:
             parent_id=request.get("parent_id"),
             intent=request.get("intent", "review"),
             replay_case=request.get("replay_case"),
+            study_request=request.get("study_request"),
         )
 
     def inspect(self, run_id: str) -> Snapshot:
@@ -56,3 +61,20 @@ class OracleRecipeService:
 
     def resume(self, run_id: str) -> Snapshot:
         return self.oracle.resume(run_id)
+
+    def launch(
+        self,
+        run_id: str,
+        *,
+        expected_total_cost_cents: int,
+        maximum_total_cost_cents: int,
+        scope_sha256: str,
+        confirmation: str,
+    ) -> Snapshot:
+        return self.oracle.launch(
+            run_id,
+            expected_total_cost_cents=expected_total_cost_cents,
+            maximum_total_cost_cents=maximum_total_cost_cents,
+            scope_sha256=scope_sha256,
+            confirmation=confirmation,
+        )

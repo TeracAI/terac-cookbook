@@ -77,6 +77,7 @@ async def test_second_recipe_uses_shared_stdio_wire_and_restarts_with_opaque_che
             "oracle_inspect",
             "oracle_respond",
             "oracle_resume",
+            "oracle_launch",
             "sum_start",
             "sum_inspect",
             "sum_respond",
@@ -301,6 +302,7 @@ async def test_oracle_actions_preserve_waiting_clarification_and_delivery(tmp_pa
             "oracle_inspect",
             "oracle_respond",
             "oracle_resume",
+            "oracle_launch",
         }
         result, started = await call(session, "oracle_start", {"brief": BRIEF})
         assert result.isError is False

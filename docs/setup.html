@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/setup.md; source-sha256: e685a647422f7a7b27831034e4c9f2770c9419bc0f19a63b2e04d8a09bd4a4ff -->
+<!-- source: docs/setup.md; source-sha256: ed3f162a18b101aeaeb5a6a33606a2501ff916d998635ac844e41f69cff8bf70 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -31,11 +31,14 @@
   <div class="page-layout">
     <article>
       <header class="page-header">
-        <p class="eyebrow">Cookbook 0.2.0.dev1</p>
+        <p class="eyebrow">Cookbook 0.2.0</p>
         <h1 id="local-setup">Local setup</h1>
-        <p class="lead">Use a reviewed Git checkout to run the Cookbook examples. The supported local
-workflow in this revision is synthetic Oracle replay; read-only Terac diagnostics
-have a separate contract in the <a href="terac-access.html">Terac access guide</a>.</p>
+        <p class="lead">Use a reviewed Git checkout to run the Cookbook examples. Replay remains the
+default. A separate Oracle opt-in supports live feasibility, draft preparation
+and launch after fresh confirmation; it does not deliver expert feedback.
+Read-only diagnostics and exact-study attachment have separate contracts in the
+<a href="terac-access.html">Terac access guide</a> and
+<a href="recipes/oracle.html#explicit-study-creation-and-launch">Oracle guide</a>.</p>
       </header>
       <div class="content">
 <h2 id="install-from-a-checkout">Install from a checkout</h2>
@@ -82,8 +85,9 @@ then run <code>uv sync --locked</code> again. Include <code>--extra connectors</
 local MCP server. Do not run <code>uv lock</code> as part of an update. Check the
 <a href="recipes/oracle.html#restart-and-updates">restart and update notes</a> before moving
 saved work between revisions.</p>
-<p>This repository describes source checkout and local wheel build workflows. It
-does not claim a PyPI release; see the version in <a href="../pyproject.toml">package metadata</a>.</p>
+<p>Package metadata for this source revision uses version 0.2.0. This repository
+documents local source-checkout and wheel workflows; it does not claim PyPI
+publication. See the <a href="../pyproject.toml">package metadata</a>.</p>
       </div>
     </article>
     <nav class="toc" aria-label="On this page">
@@ -100,7 +104,7 @@ does not claim a PyPI release; see the version in <a href="../pyproject.toml">pa
   </div>
 </main>
 <footer class="site-footer">
-  <p>Terac Cookbook 0.2.0.dev1 · Local, offline reading view.</p>
+  <p>Terac Cookbook 0.2.0 · Local, offline reading view.</p>
   <p class="source-note">Markdown is canonical. <a href="setup.md">Read the source</a>.</p>
 </footer>
 </body>
