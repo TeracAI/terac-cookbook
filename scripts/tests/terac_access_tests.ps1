@@ -197,6 +197,34 @@ public sealed class TeracFixtureHandler : HttpMessageHandler
             if (Scenario == "composed-schema")
                 return Task.FromResult(Json(HttpStatusCode.OK,
                     "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"tools\":[{\"name\":\"terac_get_context\",\"inputSchema\":{\"type\":\"object\",\"allOf\":[{\"required\":[\"organization\"]}]}}]}}"));
+            if (Scenario.StartsWith("draft07-", StringComparison.Ordinal) ||
+                Scenario.StartsWith("dialect-", StringComparison.Ordinal))
+            {
+                var dialect = "\"http://json-schema.org/draft-07/schema#\"";
+                switch (Scenario)
+                {
+                    case "dialect-unsupported": dialect = "\"https://json-schema.org/draft/2020-12/schema\""; break;
+                    case "dialect-empty": dialect = "\"\""; break;
+                    case "dialect-null": dialect = "null"; break;
+                    case "dialect-boolean": dialect = "true"; break;
+                    case "dialect-number": dialect = "7"; break;
+                    case "dialect-object": dialect = "{}"; break;
+                    case "dialect-array": dialect = "[\"http://json-schema.org/draft-07/schema#\"]"; break;
+                    case "dialect-cased-uri": dialect = "\"HTTP://json-schema.org/draft-07/schema#\""; break;
+                    case "dialect-missing-fragment": dialect = "\"http://json-schema.org/draft-07/schema\""; break;
+                    case "dialect-https": dialect = "\"https://json-schema.org/draft-07/schema#\""; break;
+                }
+                var keyword = Scenario == "dialect-cased-key" ? "$Schema" : "$schema";
+                var extra = "";
+                if (Scenario == "draft07-legacy")
+                    extra = ",\"required\":[],\"additionalProperties\":false,\"title\":\"Context\",\"description\":\"Read context\"";
+                if (Scenario == "draft07-required") extra = ",\"required\":[\"brief\"]";
+                if (Scenario == "draft07-composed") extra = ",\"allOf\":[{\"required\":[\"brief\"]}]";
+                if (Scenario == "draft07-min-properties") extra = ",\"minProperties\":1";
+                if (Scenario == "draft07-dependency") extra = ",\"dependentRequired\":{\"brief\":[\"organization\"]}";
+                return Task.FromResult(Json(HttpStatusCode.OK,
+                    "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"tools\":[{\"name\":\"terac_get_context\",\"inputSchema\":{\"" + keyword + "\":" + dialect + ",\"type\":\"object\",\"properties\":{}" + extra + "}},{\"name\":\"terac_create_opportunity\",\"inputSchema\":{\"type\":\"object\"}}]}}"));
+            }
             if (Scenario == "secret-tool-names")
                 return Task.FromResult(Json(HttpStatusCode.OK,
                     "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"tools\":[" +
@@ -522,41 +550,49 @@ try {
         $transport.Handler.Dispose()
     }
 
-    $successHandler = New-Object TeracFixtureHandler('success', $fixtureKey)
-    $successClient = New-Object System.Net.Http.HttpClient($successHandler)
-    try {
-        $probe = Invoke-TeracReadOnlyProbe -Secret $secret -HttpClient $successClient
-        $safeOutput = $probe | ConvertTo-Json -Depth 8 -Compress
-        Assert-True ($successHandler.Uris.Count -eq 5) ("read-only probe request count (actual=" + $successHandler.Uris.Count + ", MCP error=" + $probe.mcp.error + ")")
-        Assert-True (@($successHandler.Uris | Where-Object { $_ -notmatch '^https://terac\.com/api/(external/v2/organizations/current/context|mcp)$' }).Count -eq 0) 'fixed first-party endpoints only'
-        Assert-True (@($successHandler.KeyHeadersMatched | Where-Object { -not $_ }).Count -eq 0) 'API key sent only in expected auth headers'
-        Assert-True ($successHandler.SessionHeadersPresent[0] -eq $false) 'no MCP session before initialize'
-        Assert-True ($successHandler.SessionHeadersPresent[2] -and $successHandler.SessionHeadersPresent[3] -and $successHandler.SessionHeadersPresent[4]) 'MCP session reused privately'
-        Assert-True ($successHandler.ToolCallNames.Count -eq 1 -and $successHandler.ToolCallNames[0] -ceq 'terac_get_context') 'only allowlisted context tool called'
-        Assert-True ($successHandler.Bodies[-1] -match '"arguments":\{\}') 'allowlisted context call has empty arguments only'
-        Assert-True ($probe.mcp.context_read.attempted -and -not $probe.mcp.context_read.is_error) 'MCP context read result is captured safely'
-        Assert-True ($safeOutput -notmatch 'fixture-only-key|sensitive-provider-value|private-id|private-name|private-slug|12345|private-session-id|private-server-name') 'provider values and secrets are omitted'
-        Assert-True ($safeOutput -match 'terac_get_context' -and $safeOutput -match 'terac_create_opportunity') 'advertised tool names are reported'
-    } finally {
-        $successClient.Dispose()
-        $successHandler.Dispose()
+    foreach ($successScenario in @('success', 'draft07-schema', 'draft07-legacy')) {
+        $successHandler = New-Object TeracFixtureHandler($successScenario, $fixtureKey)
+        $successClient = New-Object System.Net.Http.HttpClient($successHandler)
+        try {
+            $probe = Invoke-TeracReadOnlyProbe -Secret $secret -HttpClient $successClient
+            $safeOutput = $probe | ConvertTo-Json -Depth 8 -Compress
+            Assert-True ($successHandler.Uris.Count -eq 5) ("read-only probe request count (actual=" + $successHandler.Uris.Count + ", MCP error=" + $probe.mcp.error + ")")
+            Assert-True (@($successHandler.Uris | Where-Object { $_ -notmatch '^https://terac\.com/api/(external/v2/organizations/current/context|mcp)$' }).Count -eq 0) 'fixed first-party endpoints only'
+            Assert-True (@($successHandler.KeyHeadersMatched | Where-Object { -not $_ }).Count -eq 0) 'API key sent only in expected auth headers'
+            Assert-True ($successHandler.SessionHeadersPresent[0] -eq $false) 'no MCP session before initialize'
+            Assert-True ($successHandler.SessionHeadersPresent[2] -and $successHandler.SessionHeadersPresent[3] -and $successHandler.SessionHeadersPresent[4]) 'MCP session reused privately'
+            Assert-True ($successHandler.ToolCallNames.Count -eq 1 -and $successHandler.ToolCallNames[0] -ceq 'terac_get_context') 'only allowlisted context tool called'
+            Assert-True ($successHandler.Bodies[-1] -match '"arguments":\{\}') 'allowlisted context call has empty arguments only'
+            Assert-True ($probe.mcp.context_read.attempted -and -not $probe.mcp.context_read.is_error) 'MCP context read result is captured safely'
+            Assert-True ($safeOutput -notmatch 'fixture-only-key|sensitive-provider-value|private-id|private-name|private-slug|12345|private-session-id|private-server-name') 'provider values and secrets are omitted'
+            Assert-True ($safeOutput -match 'terac_get_context' -and $safeOutput -match 'terac_create_opportunity') 'advertised tool names are reported'
+        } finally {
+            $successClient.Dispose()
+            $successHandler.Dispose()
+        }
     }
 
-    foreach ($scenario in @('unsafe-schema', 'composed-schema', 'missing-context')) {
+    foreach ($scenario in @('unsafe-schema', 'composed-schema', 'missing-context',
+        'draft07-required', 'draft07-composed', 'draft07-min-properties', 'draft07-dependency',
+        'dialect-unsupported', 'dialect-empty', 'dialect-null', 'dialect-boolean',
+        'dialect-number', 'dialect-object', 'dialect-array', 'dialect-cased-uri',
+        'dialect-missing-fragment', 'dialect-https', 'dialect-cased-key')) {
         $handler = New-Object TeracFixtureHandler($scenario, $fixtureKey)
         $client = New-Object System.Net.Http.HttpClient($handler)
         try {
             $probe = Invoke-TeracReadOnlyProbe -Secret $secret -HttpClient $client
             Assert-True ($handler.ToolCallNames.Count -eq 0) ($scenario + ' does not call a tool')
             Assert-True ($probe.mcp.context_read.attempted -eq $false) ($scenario + ' reports no context invocation')
-            if ($scenario -eq 'composed-schema') {
-                Assert-True ($probe.mcp.error -eq 'context_schema') 'composed context schema is rejected fail closed'
+            if ($scenario -notin @('unsafe-schema', 'missing-context', 'draft07-required')) {
+                Assert-True ($probe.mcp.error -eq 'context_schema') ($scenario + ' reports a sanitized schema rejection')
+                Assert-True ($handler.Uris.Count -eq 4 -and $probe.mcp.catalog_complete) ($scenario + ' stops after catalog discovery')
             }
         } finally {
             $client.Dispose()
             $handler.Dispose()
         }
     }
+    Write-Output 'PowerShell context dialect cases passed.'
 
     foreach ($scenario in @('mcp-init-missing-capabilities', 'mcp-init-null-capabilities', 'mcp-init-missing-tools-capability', 'mcp-init-invalid-tools-capability', 'mcp-init-cased-tools', 'mcp-init-cased-protocol-version', 'mcp-init-tools-false', 'mcp-init-invalid-list-changed', 'mcp-init-invalid-server-info', 'mcp-init-numeric-version')) {
         $handler = New-Object TeracFixtureHandler($scenario, $fixtureKey)

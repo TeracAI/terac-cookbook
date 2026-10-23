@@ -819,9 +819,15 @@ function Invoke-TeracReadOnlyProbe {
                     $null -eq $schemaTypeProperty -or [string]$schemaTypeProperty.Value -cne 'object') {
                     throw 'mcp_context_schema_invalid'
                 }
-                $allowedSchemaKeywords = @('type', 'properties', 'required', 'additionalProperties', 'title', 'description')
+                $allowedSchemaKeywords = @('$schema', 'type', 'properties', 'required', 'additionalProperties', 'title', 'description')
                 $schemaKeywords = @($schema.PSObject.Properties | ForEach-Object { $_.Name })
                 if (@($schemaKeywords | Where-Object { $_ -cnotin $allowedSchemaKeywords }).Count -gt 0) {
+                    throw 'mcp_context_schema_invalid'
+                }
+                $dialectProperty = Get-TeracExactJsonProperty -Value $schema -Name '$schema'
+                if ($null -ne $dialectProperty -and
+                    ($dialectProperty.Value -isnot [string] -or
+                     $dialectProperty.Value -cne 'http://json-schema.org/draft-07/schema#')) {
                     throw 'mcp_context_schema_invalid'
                 }
                 $properties = @()
