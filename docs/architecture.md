@@ -22,6 +22,7 @@ execution path and uses synthetic events without provider requests or expert spe
 | Checkpoint storage | Saved local state and validated reload |
 | Replay adapter | Synthetic events and controlled scheduling |
 | Terac diagnostics | Bounded REST context and hosted MCP discovery/context reads; operator-only and separate from Oracle |
+| Oracle study-creation adapter | Opt-in feasibility, draft and separate launch requests through the concrete Terac REST seam |
 | Future fulfillment adapter | A verified task/report binding and declared authority before any expert-work effect |
 
 The runner does not interpret GTM feedback. Oracle does not own transport or
@@ -36,22 +37,24 @@ product Recipe demonstrates a need for it.
 ## Delivery scope
 
 The v0.1–v1.0 baseline is local Oracle replay, direct Python/CLI access,
-`cookbook_app`-composed local MCP, read-only Terac diagnostics, packaged
-installation and contributor acceptance. v2.0+ remains optional and should follow
-demonstrated use; it is not part of the current runtime contract.
+`cookbook_app`-composed local MCP, read-only Terac diagnostics, an explicitly
+opt-in Oracle study-creation adapter, packaged installation and contributor
+acceptance. v2.0+ remains optional and should follow demonstrated use; it is not
+part of the current runtime contract.
 
-## Four actions, explicit progress
+## Four run actions and a separate launch
 
 | Action | Caller-visible behavior |
 |---|---|
-| `start` | Bind an exact input to a new run and save its initial waiting state |
+| `start` | Bind an exact input and save its mode-appropriate initial state; live study creation starts at `study_prepared` without a provider call |
 | `inspect` | Read waiting, clarification, feedback or failure without advancing |
 | `respond` | Save an answer to the current clarification without releasing another event |
-| `resume` | Reattach and release at most one replay event; paused or terminal work returns saved state |
+| `resume` | Reattach and advance at most one replay event or one explicitly configured live step (status/cost read, feasibility request or draft preparation); paused or terminal work returns saved state |
+| `launch` | Separately launch an explicitly prepared study after fresh confirmation and a current draft read |
 
 Linked work is another `start`, carrying `parent_id` and an explicit `follow_up`
 or `new_query` intent. It creates fresh work, preserves the parent and does not
-inherit the parent's recommendation. These are still four caller actions.
+inherit the parent's recommendation. Linked work adds no action beyond start; replay uses four replay actions, while study launch is separate.
 
 The caller retains its run identifier and chooses when to reattach. Saving a
 checkpoint does not wake an agent or schedule a worker.
@@ -94,24 +97,29 @@ deployment responsibilities.
 
 The baseline exposes inbound Python, CLI and optional local-stdio MCP calls.
 Replay is the default. An optional reviewed binding enables a read-only
-attachment to one exact study; credentials alone never select live operation or
+attachment to one exact study; a separate `--terac-study-creation` opt-in enables
+the Oracle creation workflow. Credentials alone never select live operation or
 establish content compatibility.
 
 The MCP process owns protocol schemas, bounded error responses and serialization
 within one process. It exposes `cookbook_list_recipes` and `oracle_start`,
-`oracle_inspect`, `oracle_respond`, `oracle_resume`. It calls Oracle's existing
-methods; it adds no second execution model. Discovery reports Oracle and its
-replay case catalog and whether a reviewed live binding is configured. Discovery
-does not read or advance runs.
+`oracle_inspect`, `oracle_respond`, `oracle_resume` and `oracle_launch`. It calls
+Oracle's existing methods; it adds no second execution model. Discovery reports
+Oracle and its replay case catalog and whether a reviewed live binding is
+configured. Discovery does not read or advance runs.
 
 Inbound Cookbook MCP is separate from outbound Terac MCP/REST and the provider's
-hosted connector. Without a reviewed binding, the Cookbook process makes no
-provider requests and reads no provider credentials. With one configured,
-attaching and inspecting remain local; an explicit `resume` performs bounded
-read-only context and exact-study status/cost reads. It does not create or launch
-work or retrieve expert feedback. SDK stdio checks do not establish acceptance
-inside a named client application. See the [MCP contract](mcp.md) for response
-formats and launch limits.
+hosted connector. Without an explicit live mode and the required opt-in, the
+Cookbook process makes no provider requests and reads no provider credentials.
+With a read-only binding, an explicit `resume` performs bounded context and
+exact-study status/cost reads. With study creation enabled, explicit `resume`
+may submit feasibility or create a draft; it never launches. `oracle_launch` is
+separate and requires fresh confirmation after the caller reviews the current
+quote, links, scope, total cost and cap. A fresh draft read is only a pre-launch
+check; Terac exposes no atomic price/cap condition. This adapter does not retrieve
+expert feedback. SDK stdio checks do not establish acceptance inside a named
+client application. See the [MCP contract](mcp.md) for response formats and
+launch limits.
 
 Expert fulfillment still needs an agreed caller contract and observed evidence
 for submission, progress, clarification, substantive delivery, errors and
@@ -127,6 +135,8 @@ rights and privacy clearance for their exact version and audience.
 The Python context reader performs one bounded REST read and discards provider
 values after shape validation. The Oracle study reader uses a separately reviewed
 binding and only explicit resumption to observe safe status and cost fields.
+Study creation and launch use a distinct Oracle-owned workflow and concrete REST
+adapter; the generic Runner, catalog and MCP transport stay neutral.
 Windows operator scripts provide separate credential setup and a bounded
 REST/hosted-MCP diagnostic. None of these reads submit work or retrieve a report.
 See [Terac access](terac-access.md).

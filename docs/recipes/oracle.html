@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../assets/site.css">
 </head>
 <body>
-<!-- source: docs/recipes/oracle.md; source-sha256: 73e4ad1c7fa9d8c7861f3ec3a54109aa6ddcd69bd71514fea34c3443315d569a -->
+<!-- source: docs/recipes/oracle.md; source-sha256: 1ddd0f06256be3ec8ebcbf43821497b55a968965cae0911c015d2eb8194cb027 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -31,7 +31,7 @@
   <div class="page-layout">
     <article>
       <header class="page-header">
-        <p class="eyebrow">Cookbook 0.2.0.dev1</p>
+        <p class="eyebrow">Cookbook 0.2.0</p>
         <h1 id="oracle">Oracle</h1>
         <p class="lead"><strong>Turn a go-to-market brief into a clear next decision.</strong> Oracle returns scoped
 review feedback; the calling agent decides whether to explain it, revise the
@@ -41,9 +41,10 @@ brief, continue the task or request linked work.</p>
 <p>The implemented example is a fictional appointment tool for independent repair
 shops. Its replay is synthetic and scripted. It needs no account, network call
 or expert spend. An optional reviewed binding can attach one exact live study for
-read-only status and cost observations. Live expert fulfillment and feedback are
-unavailable.</p>
-<p><img alt="Oracle&#x27;s four actions move a saved run from waiting through optional clarification to feedback. The calling agent then chooses presentation, revision or fresh linked work." src="../assets/oracle-workflow.svg"></p>
+read-only status and cost observations. A separate opt-in adapter can request
+feasibility, prepare a draft and launch only after a fresh confirmation. Expert
+feedback delivery and report retrieval are unavailable.</p>
+<p><img alt="Oracle&#x27;s four replay actions move a saved run from waiting through optional clarification to feedback. The calling agent then chooses presentation, revision or fresh linked work." src="../assets/oracle-workflow.svg"></p>
 <h2 id="input-scope-and-result">Input, scope and result</h2>
 <p>Pass a nonempty brief to <code>start</code>. The fixed review scope is <strong>buyer and pain</strong>,
 <strong>willingness to pay</strong>, and <strong>channel fit</strong>. State which claims are supported,
@@ -130,7 +131,7 @@ oracle.respond(started.run_id, &quot;Independent repair shops&quot;)
 delivered = oracle.resume(started.run_id)
 print(delivered.feedback.recommendation)
 </code></pre>
-<p>Python and CLI use the same four actions. <code>inspect</code> reads without advancement;
+<p>Python and CLI use the same four replay actions; launch is a separate Oracle action described below.
 <code>respond</code> saves an answer; <code>resume</code> releases at most one event.</p>
 <h2 id="attach-to-one-reviewed-live-study">Attach to one reviewed live study</h2>
 <p>This optional path observes status and cost for one exact, previously reviewed
@@ -153,9 +154,10 @@ fields and read limits. Synthetic transport tests do not establish authenticated
 provider conformance.</p>
 <h2 id="call-from-a-local-mcp-client">Call from a local MCP client</h2>
 <p>The optional <a href="../mcp.html">Cookbook MCP process</a> exposes discovery plus
-<code>oracle_start</code>, <code>oracle_inspect</code>, <code>oracle_respond</code> and <code>oracle_resume</code>. These call
-the same Oracle interface and retain replay, exact-brief binding and explicit
-resumption. Configure one local process with an absolute state-directory path.
+<code>oracle_start</code>, <code>oracle_inspect</code>, <code>oracle_respond</code>, <code>oracle_resume</code> and the
+separate <code>oracle_launch</code> action. These call the same Oracle interface and retain
+replay, exact-brief binding and explicit progression. Configure one local
+process with an absolute state-directory path.
 Application-client acceptance remains unverified; follow the MCP guide's launch
 and response contract rather than assuming a client-specific configuration.</p>
 <h2 id="decide-what-comes-next">Decide what comes next</h2>
@@ -171,7 +173,7 @@ and an explicit intent:</p>
 </code></pre>
 <p>Use <code>new_query</code> for a new linked question. Linked work creates its own run and
 starts without feedback; it preserves the parent and can select its own case.
-It is a use of <code>start</code>, not a fifth action. <code>respond</code> answers a currently pending
+Linked work uses start; it is not an additional workflow action. <code>respond</code> answers a currently pending
 clarification; linked <code>start</code> opens new work. No real-expert continuity is implied.</p>
 <h2 id="restart-and-updates">Restart and updates</h2>
 <p>Exit and later use the same run ID and state directory. To choose a different
@@ -206,6 +208,28 @@ Feedback cannot grant that authority. Do not commit local checkpoints, binding
 files, private briefs or confidential responses.</p>
 <p><a href="../architecture.html">Architecture</a> explains shared state and adapter boundaries.
 <a href="../contributing.html">Contributing</a> describes offline testing and new Recipes.</p>
+<h2 id="explicit-study-creation-and-launch">Explicit study creation and launch</h2>
+<p>Oracle also supports an opt-in live study workflow. Supply a validated
+<code>study_request</code> to <code>start</code> with <code>mode="live"</code> and enable the study adapter for
+the local process. The initial action saves the request locally. Each explicit
+<code>resume</code> performs at most one bounded feasibility or draft step; a returned quote
+must match the exact task, audience and participant count before a draft can be
+prepared. The checkpoint pins the quote and draft readback.</p>
+<p>Every <code>auto_approve</code> task requires a syntactically valid HTTPS <code>task_url</code>. That
+syntax check does not verify callback capability; the operator-owned task page
+must implement Terac's documented completion callback.</p>
+<p><code>launch</code> is a separate Oracle action. Before confirmation, show the returned
+feasibility quote and dashboard link, draft link, audience, task, screening mode,
+total USD cost and caller-provided cap. Confirmation binds the current scope,
+quote, total cost and cap. Immediately before launch, Cookbook rereads the draft
+and checks that its total still matches and remains within the cap. Terac exposes
+no atomic price/cap condition, so this is a pre-launch check rather than a
+transactional spending guarantee; Terac controls actual pricing and publication.
+Neither <code>start</code>, <code>resume</code> nor expert feedback grants launch authority.
+The <code>oracle_launch</code> MCP tool and <code>terac-oracle launch</code> CLI call the same recipe
+method. See <a href="../terac-access.html#oracle-study-creation-adapter">Terac access</a> for
+the local opt-in and country-filter snapshot provenance. This flow creates work;
+it does not retrieve or deliver expert reports.</p>
       </div>
     </article>
     <nav class="toc" aria-label="On this page">
@@ -221,13 +245,14 @@ files, private briefs or confidential responses.</p>
 <li><a href="#decide-what-comes-next">Decide what comes next</a></li>
 <li><a href="#restart-and-updates">Restart and updates</a></li>
 <li><a href="#errors-and-effects">Errors and effects</a></li>
+<li><a href="#explicit-study-creation-and-launch">Explicit study creation and launch</a></li>
 </ul>
 </div>
     </nav>
   </div>
 </main>
 <footer class="site-footer">
-  <p>Terac Cookbook 0.2.0.dev1 · Local, offline reading view.</p>
+  <p>Terac Cookbook 0.2.0 · Local, offline reading view.</p>
   <p class="source-note">Markdown is canonical. <a href="oracle.md">Read the source</a>.</p>
 </footer>
 </body>

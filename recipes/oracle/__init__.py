@@ -25,6 +25,15 @@ from recipes.oracle.live_contract import (
     oracle_phase_for_provider_status,
     validate_live_progress,
 )
+from recipes.oracle.study_creation import (
+    StudyCheckpointAdapter,
+    advance_study_step,
+    create_study_checkpoint,
+    is_study_creation_payload,
+    launch_study,
+    study_observation,
+    validate_study_checkpoint,
+)
 from runtime.runner import (
     RECIPE_CHECKPOINT_VERSION,
     CheckpointIncompatibleError,
@@ -69,6 +78,13 @@ class LiveIntegrationUnavailableError(ValueError):
 
     def __init__(self):
         super().__init__("Live integration is unavailable")
+
+
+class StudyCreationUnavailableError(ValueError):
+    code = "study_creation_unavailable"
+
+    def __init__(self):
+        super().__init__("Oracle study creation is unavailable")
 
 
 @dataclass(frozen=True)
@@ -224,6 +240,7 @@ class Oracle:
         *,
         replay: ReplayAdapter | None = None,
         live_binding: OracleLiveBinding | None = None,
+        study_adapter=None,
         credential_provider=None,
         live_transport_factory=None,
     ):
@@ -236,6 +253,7 @@ class Oracle:
             )
         else:
             self._live_adapter = None
+        self._study_adapter = study_adapter
         if replay is None:
             self._default_case, self._cases = _load_packaged_cases()
         else:
@@ -286,7 +304,11 @@ class Oracle:
 
     @property
     def live_available(self) -> bool:
-        return self._live_adapter is not None
+        return self._live_adapter is not None or self._study_adapter is not None
+
+    @property
+    def study_creation_available(self) -> bool:
+        return self._study_adapter is not None
 
     def _select_case(self, replay_case: str | None) -> _ReplayCase:
         if replay_case is None:
@@ -345,16 +367,21 @@ class Oracle:
                 "provider_observation": None,
             }
         elif state.mode == "live":
-            try:
-                validate_live_progress(state)
-            except (TypeError, ValueError, StudyReadError) as exc:
-                raise CheckpointIncompatibleError() from exc
+            if is_study_creation_payload(adapter):
+                validate_study_checkpoint(state)
+                observation = study_observation(state)
+            else:
+                try:
+                    validate_live_progress(state)
+                except (TypeError, ValueError, StudyReadError) as exc:
+                    raise CheckpointIncompatibleError() from exc
+                observation = adapter["observation"]
             values = {
                 "cursor": None,
                 "replay_case": None,
                 "replay_fixture_version": None,
                 "replay_fixture_digest": None,
-                "provider_observation": adapter["observation"],
+                "provider_observation": observation,
             }
         else:
             raise CheckpointIncompatibleError()
@@ -380,6 +407,9 @@ class Oracle:
     def _adapter_for_state(self, state: RunState):
         view = self._view(state)
         if view.mode == "live":
+            if is_study_creation_payload(state.adapter_payload):
+                validate_study_checkpoint(state)
+                return StudyCheckpointAdapter()
             if self._live_adapter is None:
                 raise CheckpointIncompatibleError()
             try:
@@ -430,16 +460,24 @@ class Oracle:
         parent_id: str | None = None,
         intent: str = "review",
         replay_case: str | None = None,
+        study_request: object | None = None,
     ) -> Snapshot:
         if mode == "live":
-            if self._live_adapter is None:
+            if study_request is not None:
+                if self._study_adapter is None:
+                    raise StudyCreationUnavailableError()
+            elif self._live_adapter is None:
                 raise LiveIntegrationUnavailableError()
             if parent_id is not None:
                 raise LiveLinkedWorkUnavailableError()
             if replay_case is not None:
                 raise ValueError("Replay case cannot be selected for live attachment")
         elif mode != "replay":
+            if study_request is not None:
+                raise ValueError("A live study request requires live mode")
             raise ValueError("Unsupported Oracle mode")
+        elif study_request is not None:
+            raise ValueError("A live study request requires live mode")
         if not isinstance(brief, str):
             raise ValueError("A GTM brief must be text")
         self._validate_intent(intent, parent_id)
@@ -451,6 +489,18 @@ class Oracle:
             "answer": None,
         }
         if mode == "live":
+            if study_request is not None:
+                return self._snapshot(
+                    self._runner.start(
+                        recipe_payload=recipe_payload,
+                        adapter_payload=create_study_checkpoint(brief, study_request),
+                        mode="live",
+                        intent=intent,
+                        parent_id=parent_id,
+                        recipe_contract_version=RECIPE_CONTRACT_VERSION,
+                        phase="study_prepared",
+                    )
+                )
             return self._snapshot(
                 self._runner.start(
                     recipe_payload=recipe_payload,
@@ -484,12 +534,43 @@ class Oracle:
         return self._snapshot(self._runner.inspect(run_id))
 
     def resume(self, run_id: str) -> Snapshot:
+        state = self._runner.inspect(run_id)
+        if is_study_creation_payload(state.adapter_payload):
+            if self._study_adapter is None:
+                raise StudyCreationUnavailableError()
+            return self._snapshot(advance_study_step(state, self._study_adapter, self._runner.save))
         return self._snapshot(self._runner.resume(run_id))
 
     def respond(self, run_id: str, answer: str) -> Snapshot:
         if not isinstance(answer, str) or not answer.strip():
             raise ValueError("A nonempty clarification answer is required")
         return self._snapshot(self._runner.respond(run_id, answer))
+
+    def launch(
+        self,
+        run_id: str,
+        *,
+        expected_total_cost_cents: int,
+        maximum_total_cost_cents: int,
+        scope_sha256: str,
+        confirmation: str,
+    ) -> Snapshot:
+        state = self._runner.inspect(run_id)
+        if not is_study_creation_payload(state.adapter_payload):
+            raise ValueError("Oracle run has no Terac study draft")
+        if self._study_adapter is None:
+            raise StudyCreationUnavailableError()
+        return self._snapshot(
+            launch_study(
+                state,
+                self._study_adapter,
+                self._runner.save,
+                expected_total_cost_cents=expected_total_cost_cents,
+                maximum_total_cost_cents=maximum_total_cost_cents,
+                scope_sha256=scope_sha256,
+                confirmation=confirmation,
+            )
+        )
 
     @staticmethod
     def _validate_review(feedback: dict, state: OracleRunView) -> dict:
@@ -556,6 +637,9 @@ class Oracle:
             raise ValueError("Oracle artifact or GTM scope is incompatible")
         Oracle._validate_intent(view.intent, view.parent_id)
         if view.mode == "live":
+            if is_study_creation_payload(state.adapter_payload):
+                validate_study_checkpoint(state)
+                return
             try:
                 validate_live_progress(state)
             except (TypeError, ValueError, StudyReadError) as exc:

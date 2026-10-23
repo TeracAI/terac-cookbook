@@ -7,10 +7,11 @@ brief, continue the task or request linked work.
 The implemented example is a fictional appointment tool for independent repair
 shops. Its replay is synthetic and scripted. It needs no account, network call
 or expert spend. An optional reviewed binding can attach one exact live study for
-read-only status and cost observations. Live expert fulfillment and feedback are
-unavailable.
+read-only status and cost observations. A separate opt-in adapter can request
+feasibility, prepare a draft and launch only after a fresh confirmation. Expert
+feedback delivery and report retrieval are unavailable.
 
-![Oracle's four actions move a saved run from waiting through optional clarification to feedback. The calling agent then chooses presentation, revision or fresh linked work.](../assets/oracle-workflow.svg)
+![Oracle's four replay actions move a saved run from waiting through optional clarification to feedback. The calling agent then chooses presentation, revision or fresh linked work.](../assets/oracle-workflow.svg)
 
 ## Input, scope and result
 
@@ -103,7 +104,7 @@ delivered = oracle.resume(started.run_id)
 print(delivered.feedback.recommendation)
 ```
 
-Python and CLI use the same four actions. `inspect` reads without advancement;
+Python and CLI use the same four replay actions; launch is a separate Oracle action described below.
 `respond` saves an answer; `resume` releases at most one event.
 
 ## Attach to one reviewed live study
@@ -134,9 +135,10 @@ provider conformance.
 ## Call from a local MCP client
 
 The optional [Cookbook MCP process](../mcp.md) exposes discovery plus
-`oracle_start`, `oracle_inspect`, `oracle_respond` and `oracle_resume`. These call
-the same Oracle interface and retain replay, exact-brief binding and explicit
-resumption. Configure one local process with an absolute state-directory path.
+`oracle_start`, `oracle_inspect`, `oracle_respond`, `oracle_resume` and the
+separate `oracle_launch` action. These call the same Oracle interface and retain
+replay, exact-brief binding and explicit progression. Configure one local
+process with an absolute state-directory path.
 Application-client acceptance remains unverified; follow the MCP guide's launch
 and response contract rather than assuming a client-specific configuration.
 
@@ -159,7 +161,7 @@ uv run --no-sync terac-oracle start --brief "Synthetic follow-up: investigate th
 
 Use `new_query` for a new linked question. Linked work creates its own run and
 starts without feedback; it preserves the parent and can select its own case.
-It is a use of `start`, not a fifth action. `respond` answers a currently pending
+Linked work uses start; it is not an additional workflow action. `respond` answers a currently pending
 clarification; linked `start` opens new work. No real-expert continuity is implied.
 
 ## Restart and updates
@@ -206,3 +208,29 @@ files, private briefs or confidential responses.
 
 [Architecture](../architecture.md) explains shared state and adapter boundaries.
 [Contributing](../../CONTRIBUTING.md) describes offline testing and new Recipes.
+
+## Explicit study creation and launch
+
+Oracle also supports an opt-in live study workflow. Supply a validated
+`study_request` to `start` with `mode="live"` and enable the study adapter for
+the local process. The initial action saves the request locally. Each explicit
+`resume` performs at most one bounded feasibility or draft step; a returned quote
+must match the exact task, audience and participant count before a draft can be
+prepared. The checkpoint pins the quote and draft readback.
+
+Every `auto_approve` task requires a syntactically valid HTTPS `task_url`. That
+syntax check does not verify callback capability; the operator-owned task page
+must implement Terac's documented completion callback.
+
+`launch` is a separate Oracle action. Before confirmation, show the returned
+feasibility quote and dashboard link, draft link, audience, task, screening mode,
+total USD cost and caller-provided cap. Confirmation binds the current scope,
+quote, total cost and cap. Immediately before launch, Cookbook rereads the draft
+and checks that its total still matches and remains within the cap. Terac exposes
+no atomic price/cap condition, so this is a pre-launch check rather than a
+transactional spending guarantee; Terac controls actual pricing and publication.
+Neither `start`, `resume` nor expert feedback grants launch authority.
+The `oracle_launch` MCP tool and `terac-oracle launch` CLI call the same recipe
+method. See [Terac access](../terac-access.md#oracle-study-creation-adapter) for
+the local opt-in and country-filter snapshot provenance. This flow creates work;
+it does not retrieve or deliver expert reports.

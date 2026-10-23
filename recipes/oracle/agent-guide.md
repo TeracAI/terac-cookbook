@@ -52,6 +52,8 @@ it, follow-up/new query uses a fresh start with parent_id and explicit intent; i
 preserves the parent's review, not the same expert or payment arrangement.
 
 Replay is available without a key. Do not edit fixtures or checkpoints as a caller.
-Live fulfillment is unavailable in this candidate's base; do not bypass that with
-direct hosted-connector calls. For a newer installation, verify its actual mode
-and authority contract before making a different claim.
+A separate opt-in Oracle flow supports feasibility, draft preparation and launch
+after fresh confirmation. It does not retrieve or deliver expert reports. Follow
+the [study-creation and launch contract](../../docs/recipes/oracle.md#explicit-study-creation-and-launch);
+do not bypass its effect and confirmation boundaries with direct hosted-connector
+calls.

@@ -1,6 +1,6 @@
 [project]
 name = "terac-cookbook"
-version = "0.2.0.dev1"
+version = "0.2.0"
 description = "Runnable examples of agents working with expert feedback"
 license = "MIT"
 license-files = ["LICENSE"]

@@ -16,21 +16,27 @@ locally to understand the complete workflow without an account or expert spend.
   local replay workflow and the available read-only Terac diagnostics.
 - **Run the example:** [Oracle](recipes/oracle.md) walks through waiting,
   clarification, feedback and linked work.
+- **Create a study:** [Oracle's opt-in study flow](recipes/oracle.md#explicit-study-creation-and-launch)
+  covers feasibility, draft preparation and separately confirmed launch; report
+  delivery is not included.
 - **Understand the design:** [Architecture](architecture.md) explains how recipes,
   the Runner, replay and checkpoints fit together, with the current delivery scope.
 - **Browse the catalog:** [Recipes](recipes/index.md) lists implemented examples
   and their available modes.
 - **Connect a local agent:** [Local MCP](mcp.md) exposes discovery and the same
-  four Oracle actions through stdio.
+  four replay actions and the separate launch tool through stdio.
 - **Add or improve an example:** [Contributing](../CONTRIBUTING.md) takes one
   proposal through source, offline checks and review.
 
 ## What this baseline delivers
 
-Oracle has four caller actions: `start`, `inspect`, `respond` and `resume`.
-Three synthetic cases demonstrate pass with comments, fail and inconclusive
-feedback. Saved local state supports inspection and deliberate resumption after
-a caller exits. Linked work starts a fresh run while preserving earlier feedback.
+Oracle's four replay workflow actions are start, inspect, respond and resume.
+A separate opt-in flow supports feasibility, draft preparation and confirmed
+study launch; it does not deliver expert reports. The MCP catalog also offers
+recipe discovery. Three synthetic cases demonstrate pass with comments, fail
+and inconclusive feedback. Saved local state supports inspection and deliberate
+resumption after a caller exits. Linked work uses another start while preserving
+earlier feedback.
 
 The agent owns the next decision: explain the result, revise the brief, continue
 the task or request more scoped work. Delivery does not require an automatic
@@ -38,9 +44,11 @@ rewrite. A new brief has no inherited verdict.
 
 ## Read the boundaries
 
-This baseline provides Python, CLI and optional local-stdio MCP replay; live
-expert fulfillment is unavailable. Replay timing and content are scripted. They demonstrate software
-behavior, not real expert judgment or market validation.
+Replay is the default for Python, CLI and local stdio MCP. Explicit opt-in Oracle
+study creation supports feasibility, draft preparation and separate confirmed
+launch. Expert-report retrieval and feedback delivery remain unavailable. Replay
+timing and content are scripted; they demonstrate software behavior, not real
+expert judgment or market validation.
 
 MCP application-client acceptance is separate from SDK stdio checks. Codex,
 Claude Code and other clients must be verified individually before advertising
@@ -56,4 +64,6 @@ generated for offline reading; they use no external assets or browser scripts.
 ## Check Terac access separately
 
 [Read-only Terac diagnostics](terac-access.md) expose sanitized context facts.
-They do not enable Oracle live fulfillment.
+Oracle's separate opt-in study flow can create and launch work, but it does not
+retrieve expert reports. See the
+[Oracle study guide](recipes/oracle.md#explicit-study-creation-and-launch).

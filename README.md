@@ -41,10 +41,12 @@ sharing the Runner. The [architecture](docs/architecture.md) explains the seams;
 [Contributing](CONTRIBUTING.md) shows how to extend and test them together.
 Replay is the supported way to exercise expert-work flows in this revision. A
 bounded, explicitly configured Terac adapter supports read-only organization
-context and exact-study status/cost reads; study creation, launch and expert
-fulfillment are not shipped. See the [Terac access guide](docs/terac-access.md).
-Other live provider operations need a separately reviewed recipe-specific
-contract and adapter.
+context and exact-study status/cost reads. Oracle also provides a separate,
+opt-in study-creation flow with explicit launch confirmation after presenting the
+quote, links, audience, task, screening mode, total and cap; it does not deliver
+expert feedback. See the [Terac access guide](docs/terac-access.md) and
+[Oracle guide](docs/recipes/oracle.md). Other live provider operations need a
+separately reviewed recipe-specific contract and adapter.
 
 ## First recipe: Oracle
 
@@ -124,9 +126,10 @@ See [native host registration guidance](docs/setup.md#register-with-a-native-hos
 for Codex, Claude Code and Hermes configuration references.
 
 Call `cookbook_list_recipes`, inspect the selected recipe's actual tool schemas,
-then use its supported actions. Oracle currently exposes `oracle_start`,
-`oracle_inspect`, `oracle_respond` and `oracle_resume`. There is no assumed
-universal recipe-start tool or executable YAML dispatcher.
+then use its supported actions. Oracle exposes `oracle_start`, `oracle_inspect`,
+`oracle_respond`, `oracle_resume` and the separate, explicitly confirmed
+`oracle_launch`. There is no assumed universal recipe-start tool or executable
+YAML dispatcher.
 
 The [Cookbook agent skill](.agents/skills/terac-cookbook/SKILL.md) routes discovery
 and shared workflow to recipe-local guidance. It is checkout guidance, not a
@@ -160,16 +163,19 @@ Do not include credentials, private checkpoints or uncleared expert material.
   saved-run recovery.
 - [Architecture](docs/architecture.md) — recipes, runner, adapters and state.
 - [Local MCP](docs/mcp.md) — discovery, process setup and caller semantics.
-- [Read-only Terac diagnostics](docs/terac-access.md) — check access independently
-  of a Recipe Run; study creation and launch are not supported in this revision.
+- [Terac access](docs/terac-access.md) — read-only diagnostics and the separate
+  opt-in Oracle study-creation and launch adapter.
 
 The generated HTML reading views under `docs/` offer the same guides with local
 navigation and diagrams. Markdown is the canonical source.
 
 ## Supported today
 
-This baseline provides local Python, CLI and stdio MCP replay. Live expert
-fulfillment remains unavailable; read-only diagnostics do not enable it.
+Replay remains the default for local Python, CLI and stdio MCP. Separate opt-ins
+support exact-study status reads and Oracle study creation: feasibility, draft
+preparation and a separately confirmed launch. The launch cap is checked against
+a fresh local read; the provider has no atomic price/cap condition. Expert-report
+retrieval and feedback delivery remain unavailable.
 Terac's hosted MCP/REST connector is a different interface from this Cookbook
 server. Actual expert reports need verified retrieval, binding and provenance;
 status alone is not feedback. Advice grants no authority to recruit, spend or pay.
@@ -178,9 +184,9 @@ Checkpoints are local plaintext JSON with one owning process at a time. There
 are no automatic agent wakeups or concurrent-writer guarantees. Preserve
 incompatible saved work rather than editing it to force a reload.
 
-Install/update from a reviewed Git revision and its lockfile; these instructions
-make no PyPI-publication claim. This packet's base checkout declares
-`0.2.0.dev1` in [package metadata](pyproject.toml), not a published stable release.
+Install/update from a reviewed Git revision and its lockfile. This source
+revision sets package metadata to 0.2.0 for checkout and local-wheel builds;
+this does not claim PyPI publication. See [package metadata](pyproject.toml).
 See [update and recovery](docs/recipes/oracle.md#restart-and-updates)
 before moving an existing run to a new version. Original code is under the
 [MIT license](LICENSE); third-party notices and rights to actual expert material

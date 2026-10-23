@@ -11,4 +11,5 @@ def test_default_application_explicitly_composes_oracle(tmp_path):
         "oracle_inspect",
         "oracle_respond",
         "oracle_resume",
+        "oracle_launch",
     }

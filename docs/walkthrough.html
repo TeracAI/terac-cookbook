@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/walkthrough.md; source-sha256: 585b8217427e25d87319cebb4727225dbffc50bbf9ea63e97fc73b498e64e420 -->
+<!-- source: docs/walkthrough.md; source-sha256: 524e8613e572c23f18f84805aa4b936244007336acfc00fb360bb6e4dc396374 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -31,7 +31,7 @@
   <div class="page-layout">
     <article>
       <header class="page-header">
-        <p class="eyebrow">Cookbook 0.2.0.dev1</p>
+        <p class="eyebrow">Cookbook 0.2.0</p>
         <h1 id="cookbook-walkthrough">Cookbook walkthrough</h1>
         <p class="lead">A short, local-first demonstration of the current seams. The Oracle case and its
 feedback are scripted and synthetic; no Terac account or expert spend is needed
@@ -58,7 +58,7 @@ linked work and restart behavior.</p>
 <h2 id="show-the-mcp-caller">Show the MCP caller</h2>
 <p>Use the installed <code>terac-cookbook-mcp</code> entrypoint with an absolute local state
 directory. The <a href="mcp.html">MCP guide</a> explains the stdio launch configuration,
-discovery and the four Oracle actions. This is the inbound Cookbook MCP process;
+discovery and the four replay actions. This is the inbound Cookbook MCP process;
 it does not call Terac.</p>
 <h2 id="show-the-separate-terac-diagnostics">Show the separate Terac diagnostics</h2>
 <p>The project also contains real, bounded read-only connectors: a REST organization
@@ -70,8 +70,7 @@ They do not submit expert work or return a report to Oracle. See
 <p>It demonstrates the packaged local workflow, explicit caller progression, saved
 state, recipe-owned feedback and optional inbound MCP. An authorized operator
 may separately demonstrate the existing Terac diagnostics. Neither the replay
-nor those diagnostics establishes real expert delivery, Oracle live fulfillment
-or production hosting.</p>
+nor those diagnostics establishes expert-report delivery or production hosting.</p>
       </div>
     </article>
     <nav class="toc" aria-label="On this page">
@@ -88,7 +87,7 @@ or production hosting.</p>
   </div>
 </main>
 <footer class="site-footer">
-  <p>Terac Cookbook 0.2.0.dev1 · Local, offline reading view.</p>
+  <p>Terac Cookbook 0.2.0 · Local, offline reading view.</p>
   <p class="source-note">Markdown is canonical. <a href="walkthrough.md">Read the source</a>.</p>
 </footer>
 </body>

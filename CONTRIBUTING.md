@@ -42,9 +42,9 @@ private directory outside the checkout. See [local setup](docs/setup.md) for
 connector and checkpoint guidance.
 
 The `connectors` extra installs the locked HTTPX and MCP dependencies needed by
-this revision's stdio integration tests and optional read-only study attachment.
-Study creation and explicit launch are not shipped in this revision. See the
-[MCP guide](docs/mcp.md) before changing tool schemas or process setup.
+this revision's stdio integration tests, optional read-only study attachment,
+and Oracle's opt-in study-creation adapter. See the [MCP guide](docs/mcp.md)
+before changing tool schemas or process setup.
 
 ## Build a Recipe
 

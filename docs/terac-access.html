@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Read-only Terac access | Terac Cookbook</title>
+  <title>Terac access | Terac Cookbook</title>
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/terac-access.md; source-sha256: 223945b21d6b7c9c683fc01f7a49d57172382585d491eb09a7a63f8154c15a0f -->
+<!-- source: docs/terac-access.md; source-sha256: 9cf0277fe2fba80c88dd4d3f31e008d62307eb1812c2b4311929626650c708b1 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -31,12 +31,14 @@
   <div class="page-layout">
     <article>
       <header class="page-header">
-        <p class="eyebrow">Cookbook 0.2.0.dev1</p>
-        <h1 id="read-only-terac-access">Read-only Terac access</h1>
-        <p class="lead">These diagnostics check a connection and response shape. They do not create or
-launch a study, recruit or pay an expert, approve labor, or retrieve expert
-feedback. Oracle remains replay by default, including when a key is present; its
-separate read-only live attachment requires an explicit reviewed binding.</p>
+        <p class="eyebrow">Cookbook 0.2.0</p>
+        <h1 id="terac-access">Terac access</h1>
+        <p class="lead">This guide covers read-only diagnostics and Oracle's separate opt-in study-
+creation adapter. Diagnostics and the reviewed exact-study attachment do not
+create or launch work, approve labor, or retrieve expert feedback. The study-
+creation adapter can request feasibility, prepare a draft and perform a separate
+explicit launch after fresh confirmation. Oracle remains replay by default,
+including when a key is present.</p>
       </header>
       <div class="content">
 <h2 id="choose-the-access-path">Choose the access path</h2>
@@ -135,6 +137,24 @@ The reader does not call a submission/report retrieval tool or expose expert
 content, and does not invoke creation, launch, clarification, recruitment or
 payment tools. A failed read leaves the checkpoint unchanged.
 Replay remains the default even when a key or binding is configured.</p>
+<h2 id="oracle-study-creation-adapter">Oracle study-creation adapter</h2>
+<p>This separate opt-in adapter can request feasibility and prepare a draft during
+explicit <code>resume</code> calls, then launch only through a separate <code>oracle_launch</code> MCP
+tool or <code>terac-oracle launch</code> CLI action after fresh confirmation. The initial live <code>start</code> saves the request
+locally without a provider call. It reads <code>TERAC_API_KEY</code> lazily when an explicit
+provider step runs. Keep replay as the default; a key or adapter configuration
+alone never selects live mode. Before launch, Cookbook rereads the draft and
+checks the current total against the reviewed quote and caller cap. Terac exposes
+no atomic price/cap condition, so this local pre-launch check is not a
+transactional spending guarantee; Terac controls actual pricing and publication.
+This adapter does not retrieve expert reports or feedback.</p>
+<p>Oracle validates country audience filters against a dated provider-option
+snapshot: 242 two-letter country-option values returned by
+<code>terac_get_filter_options</code> on 23 October 2026 for <code>multi_select--country</code>.
+The sorted, newline-delimited value digest is
+<code>b89860570553322b00fee8cebeb3ea578ff03ee02be9c7abcf594a39bc2c4804</code>. This is a
+strict compatibility check against that captured list, not a live lookup.
+Unknown values are rejected before checkpoint persistence.</p>
 <h2 id="tests-and-remaining-live-work">Tests and remaining live work</h2>
 <p>The default test suite uses fake HTTP transport and synthetic secrets. Windows
 credential tests use isolated temporary stores. CI does not read an operator's
@@ -158,6 +178,7 @@ remain separate.</p>
 <li><a href="#explicit-operator-probe">Explicit operator probe</a></li>
 <li><a href="#python-context-reader">Python context reader</a></li>
 <li><a href="#oracle-exact-study-status-reader">Oracle exact-study status reader</a></li>
+<li><a href="#oracle-study-creation-adapter">Oracle study-creation adapter</a></li>
 <li><a href="#tests-and-remaining-live-work">Tests and remaining live work</a></li>
 </ul>
 </div>
@@ -165,7 +186,7 @@ remain separate.</p>
   </div>
 </main>
 <footer class="site-footer">
-  <p>Terac Cookbook 0.2.0.dev1 · Local, offline reading view.</p>
+  <p>Terac Cookbook 0.2.0 · Local, offline reading view.</p>
   <p class="source-note">Markdown is canonical. <a href="terac-access.md">Read the source</a>.</p>
 </footer>
 </body>
