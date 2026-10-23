@@ -60,6 +60,9 @@ to Oracle; other recipes define their own jobs and results. Try its complete
 Requires Python 3.11+, Git and [uv](https://docs.astral.sh/uv/).
 Repository access is required to clone this checkout.
 
+See [local setup](docs/setup.md) for connector, checkpoint and update guidance,
+and [offline testing](docs/testing.md) for the installed-wheel checks.
+
 ```sh
 git clone https://github.com/TeracAI/terac-cookbook.git
 cd terac-cookbook
@@ -117,6 +120,8 @@ Configure your MCP host using the command/argument contract in the
 [local MCP guide](docs/mcp.md), with an absolute private state directory. The
 Cookbook server uses stdio, not a hosted HTTP endpoint. Installing dependencies
 does not configure a client or establish named-client support.
+See [native host registration guidance](docs/setup.md#register-with-a-native-host)
+for Codex, Claude Code and Hermes configuration references.
 
 Call `cookbook_list_recipes`, inspect the selected recipe's actual tool schemas,
 then use its supported actions. Oracle currently exposes `oracle_start`,
@@ -145,6 +150,10 @@ Do not include credentials, private checkpoints or uncleared expert material.
 
 ## Explore the docs
 
+- [Local setup](docs/setup.md) - install a checkout, configure local MCP and
+  retain checkpoints across restarts.
+- [Offline testing](docs/testing.md) - run the local checks and installed-wheel
+  smoke.
 - [Documentation home](docs/index.md) and [recipe catalog](docs/recipes/index.md)
   — choose an example and its supported modes.
 - [Oracle guide](docs/recipes/oracle.md) — inputs, feedback, Python/CLI calls and

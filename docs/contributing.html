@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: CONTRIBUTING.md; source-sha256: a26b2664d7163859fdd148f16171d5615e6ccb48c3e0063b6ed1a994204ee9e2 -->
+<!-- source: CONTRIBUTING.md; source-sha256: 98ec1ff0065028f4cfe52d2b335a1faef14040a9eee77d5155a8fa2993917eb2 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -16,6 +16,8 @@
     </a>
     <nav class="site-nav" aria-label="Main navigation">
         <a href="index.html">Home</a>
+        <a href="setup.html">Setup</a>
+        <a href="testing.html">Testing</a>
         <a href="architecture.html">Architecture</a>
         <a href="walkthrough.html">Walkthrough</a>
         <a href="recipes/index.html">Recipes</a>
@@ -65,7 +67,8 @@ uv sync --locked --extra connectors
 </code></pre>
 <p>Run the <a href="recipes/oracle.html#run-the-default-case">Oracle walkthrough</a> to see
 the existing caller contract. Keep local checkpoints in ignored <code>.tmp/</code> or a
-private directory outside the checkout.</p>
+private directory outside the checkout. See <a href="setup.html">local setup</a> for
+connector and checkpoint guidance.</p>
 <p>The <code>connectors</code> extra installs the locked HTTPX and MCP dependencies needed by
 this revision's stdio integration tests and optional read-only study attachment.
 Study creation and explicit launch are not shipped in this revision. See the
@@ -103,8 +106,12 @@ uv run --no-sync python -m pytest -q
 uv run --no-sync ruff check .
 uv run --no-sync ruff format --check .
 uv build
+uv run --no-sync python scripts/smoke_wheel.py
+uv run --no-sync python scripts/smoke_wheel.py --with-mcp
 git diff --check
 </code></pre>
+<p>The <a href="testing.html">offline testing guide</a> describes these checks and the
+Windows/macOS installed-wheel matrix.</p>
 <p>If you edit canonical Markdown, regenerate its HTML with
 <code>uv run --no-sync python scripts/render_docs.py</code> before checking it. Markdown
 owns the prose; generated HTML is its offline reading view. Inspect changed pages

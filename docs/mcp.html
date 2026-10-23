@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/mcp.md; source-sha256: a57d6fbdd8f7f5bf5339e986cc401461caddeff3772b95909dbc02ad09b34af6 -->
+<!-- source: docs/mcp.md; source-sha256: b767849b0af78923074a61757c91009d3b0ca2ba81736e271e8072d9e2495329 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -16,6 +16,8 @@
     </a>
     <nav class="site-nav" aria-label="Main navigation">
         <a href="index.html">Home</a>
+        <a href="setup.html">Setup</a>
+        <a href="testing.html">Testing</a>
         <a href="architecture.html">Architecture</a>
         <a href="walkthrough.html">Walkthrough</a>
         <a href="recipes/index.html">Recipes</a>
@@ -160,7 +162,10 @@ labor/payment state stay separate. Expert advice grants no additional authority.
 <p>The tool contract is client-neutral. Actual acceptance inside Codex, Claude Code,
 Pi, Hermes or another application is <strong>unverified</strong>. A local SDK stdio exchange
 does not establish application-specific launch, permissions or rendering behavior.
-Remote ChatGPT connectivity requires a separately verified transport and deployment.</p>
+Remote ChatGPT connectivity requires a separately verified transport and deployment.
+For native <code>command</code>/<code>args</code> registration, see <a href="setup.html#register-with-a-native-host">setup guidance</a>
+and the linked host documentation. Those configuration examples do not establish
+that a named client has been tested with this Cookbook server.</p>
 <p>For each client, record its version and the installed server revision, then
 exercise discovery, all four actions, unchanged inspection, restart and linked
 work. Advertise only clients whose complete path has been verified.</p>

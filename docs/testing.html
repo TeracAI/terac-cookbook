@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Offline testing | Terac Cookbook</title>
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<!-- source: docs/testing.md; source-sha256: 9e819bdcbdbfbc0a42dc61496c06e331c0aa2b6bbf5c25d9054e3ca2ffdbf17a -->
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="index.html">
+      <img class="brand-mark" src="assets/terac-icon.svg" width="24" height="24" alt="">Terac Cookbook
+    </a>
+    <nav class="site-nav" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="setup.html">Setup</a>
+        <a href="testing.html" aria-current="page">Testing</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="walkthrough.html">Walkthrough</a>
+        <a href="recipes/index.html">Recipes</a>
+        <a href="contributing.html">Contributing</a>
+        <a href="mcp.html">MCP</a>
+        <a href="terac-access.html">Terac access</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="page-shell">
+  <div class="page-layout">
+    <article>
+      <header class="page-header">
+        <p class="eyebrow">Cookbook 0.2.0.dev1</p>
+        <h1 id="offline-testing">Offline testing</h1>
+        <p class="lead">Local checks exercise deterministic behavior with synthetic data. They do not
+contact Terac, request expert work or incur provider effects. Passing local
+checks and hosted CI does not establish live-provider or named-client behavior.</p>
+      </header>
+      <div class="content">
+<h2 id="run-the-repository-checks">Run the repository checks</h2>
+<p>Install the locked development and MCP test dependencies, then run the checks
+used by the offline workflow:</p>
+<pre><code class="language-sh">uv sync --locked --extra connectors
+uv run --no-sync python scripts/check_docs.py
+uv run --no-sync python scripts/render_docs.py --check
+uv run --no-sync python -m pytest -q
+uv run --no-sync ruff check .
+uv run --no-sync ruff format --check .
+uv build
+uv run --no-sync python scripts/smoke_wheel.py
+uv run --no-sync python scripts/smoke_wheel.py --with-mcp
+git diff --check
+</code></pre>
+<p>If canonical Markdown changes, regenerate the offline HTML views with
+<code>uv run --no-sync python scripts/render_docs.py</code> and then repeat the render
+check. Markdown is the source; the generated pages provide local navigation and
+work without external scripts or assets.</p>
+<h2 id="installed-wheel-smoke">Installed-wheel smoke</h2>
+<p>The smoke script runs from the checkout but installs the built wheel into a
+temporary environment and exercises it from outside the source tree. Run it
+without options for a core-only install; it uses locked runtime requirements,
+verifies that MCP is absent, and covers the CLI replay outcomes and inspection.
+Run it again with <code>--with-mcp</code> to install the connector extra, check the
+packaged MCP module entrypoint, and use the SDK stdio client to discover tools,
+restart a server, resume a synthetic run and inspect its saved state.</p>
+<p>The <code>offline</code> CI job runs the full test, lint, documentation and build checks on
+Python 3.11 and 3.12, then exercises both wheel installation modes. The
+<code>portable-wheel</code> job builds and smokes both modes on Windows and macOS. The
+separate <code>windows-credentials</code> job uses synthetic local fixtures. These checks
+do not contact Terac or spend money, and wheel smoke does not establish support
+for a particular MCP application client. The SDK stdio smoke starts the server
+directly; it does not verify host-specific registration or named-client behavior.</p>
+<p>For contribution review expectations, see <a href="contributing.html">Contributing</a>
+and the <a href="../REVIEW.md">independent review contract</a>.</p>
+      </div>
+    </article>
+    <nav class="toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+<div>
+<ul>
+<li><a href="#run-the-repository-checks">Run the repository checks</a></li>
+<li><a href="#installed-wheel-smoke">Installed-wheel smoke</a></li>
+</ul>
+</div>
+    </nav>
+  </div>
+</main>
+<footer class="site-footer">
+  <p>Terac Cookbook 0.2.0.dev1 · Local, offline reading view.</p>
+  <p class="source-note">Markdown is canonical. <a href="testing.md">Read the source</a>.</p>
+</footer>
+</body>
+</html>

@@ -15,7 +15,7 @@ async def smoke_mcp(python: Path, work: Path, environment: dict[str, str]) -> No
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
 
-    state = work / "mcp-runs"
+    state = work / "mcp runs \u03a9"
     parameters = StdioServerParameters(
         command=str(python),
         args=["-m", "cookbook_app", "--state-dir", str(state)],
@@ -123,19 +123,37 @@ async def smoke_mcp(python: Path, work: Path, environment: dict[str, str]) -> No
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--wheel", type=Path, required=True)
+    parser.add_argument(
+        "--wheel", type=Path, help="built wheel (defaults to the sole wheel in dist/)"
+    )
     parser.add_argument("--uv", default="uv")
     parser.add_argument("--with-mcp", action="store_true", help="also rehearse installed stdio MCP")
     args = parser.parse_args()
-    wheel = args.wheel.resolve(strict=True)
+    if args.wheel is None:
+        wheels = list((Path(__file__).resolve().parents[1] / "dist").glob("*.whl"))
+        if len(wheels) != 1:
+            parser.error("expected exactly one wheel under dist/ or pass --wheel")
+        wheel = wheels[0].resolve(strict=True)
+    else:
+        wheel = args.wheel.resolve(strict=True)
     if wheel.suffix != ".whl":
         parser.error("--wheel must point to a built wheel")
+    stripped_prefixes = (
+        "TERAC_",
+        "PYTHONHOME",
+        "PYTHONPATH",
+        "PYTHONUSERBASE",
+        "UV_PROJECT_ENVIRONMENT",
+        "VIRTUAL_ENV",
+    )
     environment = {
         key: value
         for key, value in os.environ.items()
-        if not key.upper().startswith(("TERAC_", "PYTHONPATH", "VIRTUAL_ENV"))
+        if not key.upper().startswith(stripped_prefixes)
     }
-    with tempfile.TemporaryDirectory(prefix="cookbook-installed-") as directory:
+    with tempfile.TemporaryDirectory(
+        prefix="cookbook-installed-", ignore_cleanup_errors=os.name == "nt"
+    ) as directory:
         work = Path(directory)
         installed = work / "installed"
         constraints = work / "locked-runtime.txt"
@@ -184,7 +202,20 @@ def main() -> int:
             check=True,
             timeout=90,
         )
-        state = work / "runs"
+        if not args.with_mcp:
+            subprocess.run(
+                [
+                    str(python),
+                    "-c",
+                    "import importlib.util, sys; "
+                    "sys.exit(importlib.util.find_spec('mcp') is not None)",
+                ],
+                cwd=work,
+                env=environment,
+                check=True,
+                timeout=20,
+            )
+        state = work / "runs with \u03a9"
         brief = "Fictional caf\u00e9 \U0001f469\U0001f3fd\u200d\U0001f527 launch brief"
 
         def call(*arguments: str) -> dict:

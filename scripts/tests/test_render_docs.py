@@ -22,6 +22,8 @@ class RenderDocsTests(unittest.TestCase):
             '<path fill-rule="evenodd" clip-rule="evenodd" d="M0 0 L9 9"/></svg>\n',
         )
         self.write("docs/index.md", "# Cookbook\n\n## Start here\n\nWelcome.\n")
+        self.write("docs/setup.md", "# Setup\n\n## Install\n\nUse a checkout.\n")
+        self.write("docs/testing.md", "# Testing\n\n## Check\n\nRun local checks.\n")
         self.write("docs/architecture.md", "# Architecture\n\n## Runner\n\nLocal replay.\n")
         self.write("docs/recipes/index.md", "# Recipes\n\n[Oracle](oracle.md)\n")
         self.write("docs/recipes/oracle.md", "# Oracle\n\n## Run\n\nReplay.\n")
@@ -68,6 +70,10 @@ class RenderDocsTests(unittest.TestCase):
         self.assertIn("0.1.7", page)
         self.assertIn("source-sha256:", page)
         self.assertNotIn(str(self.root), page)
+        self.assertIn('href="setup.html"', page)
+        self.assertIn('href="testing.html"', page)
+        self.assertTrue((self.root / "docs/setup.html").is_file())
+        self.assertTrue((self.root / "docs/testing.html").is_file())
         self.assertTrue((self.root / "docs/walkthrough.html").is_file())
         self.assertTrue((self.root / "docs/recipes/oracle.html").is_file())
 
