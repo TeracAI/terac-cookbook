@@ -107,7 +107,9 @@ def test_cli_configured_live_invalid_start_reports_request_error(tmp_path, inval
     )
 
     assert result.returncode == 2
-    assert json.loads(result.stdout) == {"error": "invalid_request_or_checkpoint"}
+    error = json.loads(result.stderr)
+    assert error.get("category", error["error"]) == "invalid_request_or_checkpoint"
+    assert result.stdout == ""
     assert not list(state_dir.glob("*.json"))
 
 
@@ -117,7 +119,8 @@ def test_cli_live_start_without_binding_reports_unavailable(tmp_path):
     result = _run_cli(state_dir, None, "start", "--brief", BRIEF, "--mode", "live")
 
     assert result.returncode == 2
-    assert json.loads(result.stdout) == {"error": "live_unavailable"}
+    assert json.loads(result.stderr) == {"error": "live_unavailable"}
+    assert result.stdout == ""
     assert not list(state_dir.glob("*.json"))
 
 
@@ -142,7 +145,8 @@ def test_cli_live_resume_without_credential_preserves_waiting_checkpoint(tmp_pat
     resumed = _run_cli(state_dir, binding_path, "resume", run["run_id"])
 
     assert resumed.returncode == 2
-    assert json.loads(resumed.stdout) == {"error": "credential_unavailable"}
+    assert json.loads(resumed.stderr) == {"error": "credential_unavailable"}
+    assert resumed.stdout == ""
     assert checkpoint.read_bytes() == original_bytes
 
 
@@ -188,6 +192,7 @@ def test_cli_rejects_linked_live_start_without_rewriting_parent(
     )
 
     assert linked.returncode == 2
-    assert json.loads(linked.stdout) == {"error": "live_linked_work_unavailable"}
+    assert json.loads(linked.stderr) == {"error": "live_linked_work_unavailable"}
+    assert linked.stdout == ""
     assert set(state_dir.glob("*.json")) == {checkpoint}
     assert checkpoint.read_bytes() == original_bytes

@@ -201,7 +201,8 @@ def test_empty_checkpoint_lifecycle_text_is_rejected_by_python_and_cli_without_r
         text=True,
     )
     assert inspected.returncode == 2
-    assert json.loads(inspected.stdout) == {"error": "checkpoint_incompatible"}
+    assert json.loads(inspected.stderr) == {"error": "checkpoint_incompatible"}
+    assert inspected.stdout == ""
     assert "Traceback" not in inspected.stderr
     assert checkpoint.read_bytes() == malformed
 
@@ -263,7 +264,8 @@ def test_cli_sanitizes_malformed_v3_scope_as_incompatible(tmp_path):
     )
 
     assert inspected.returncode == 2
-    assert json.loads(inspected.stdout) == {"error": "checkpoint_incompatible"}
+    assert json.loads(inspected.stderr) == {"error": "checkpoint_incompatible"}
+    assert inspected.stdout == ""
     assert "Traceback" not in inspected.stderr
     assert checkpoint.read_bytes() == malformed
 
@@ -310,7 +312,8 @@ def test_cli_selects_a_replay_case_and_reports_selector_errors(tmp_path):
         text=True,
     )
     assert invalid.returncode == 2
-    assert json.loads(invalid.stdout) == {"error": "invalid_replay_case"}
+    assert json.loads(invalid.stderr) == {"error": "invalid_replay_case"}
+    assert invalid.stdout == ""
 
 
 def test_captured_cli_preserves_unicode_through_all_actions(tmp_path, monkeypatch):

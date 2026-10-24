@@ -318,6 +318,7 @@ def test_transition_cannot_retarget_a_saved_run_identity(tmp_path):
 
 
 def test_recipe_composition_rejects_missing_or_duplicate_bindings(tmp_path):
+    pytest.importorskip("mcp")
     from adapters.cookbook_mcp import create_server
     from tests.recipe_mcp_fixture import SumMCPBinding
 
@@ -343,6 +344,7 @@ def test_recipe_composition_rejects_missing_or_duplicate_bindings(tmp_path):
 
 
 def test_cookbook_mcp_rejects_duplicate_tool_names(tmp_path):
+    pytest.importorskip("mcp")
     from adapters.cookbook_mcp import CookbookMCP
 
     server = CookbookMCP("test")

@@ -3,7 +3,9 @@
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
+from uuid import UUID
 
 from adapters.terac_study_contract import StudyReadError, StudyWriteError
 from recipes.oracle import (
@@ -19,6 +21,48 @@ from runtime.json_utils import unique_json_object
 from runtime.runner import CheckpointIncompatibleError
 
 MAX_STUDY_REQUEST_BYTES = 262_144
+INVALID_REQUEST_CATEGORY = "invalid_request_or_checkpoint"
+_REQUEST_ERROR_CODES = {
+    "A GTM brief must be text": "invalid_brief",
+    "Oracle start requires a brief": "invalid_brief",
+    "A nonempty Oracle brief is required": "invalid_brief",
+    "A nonempty clarification answer is required": "invalid_answer",
+    "Run has no pending clarification": "no_pending_clarification",
+    "Linked start requires a parent and follow_up/new_query intent": "parent_required",
+    "Expected a canonical run identity": "invalid_run_id",
+}
+
+
+def _error(payload: dict) -> int:
+    print(json.dumps(payload), file=sys.stderr)
+    return 2
+
+
+def _is_canonical_run_id(run_id: str) -> bool:
+    try:
+        return str(UUID(run_id)) == run_id
+    except ValueError:
+        return False
+
+
+def _request_error(exc: ValueError, args: argparse.Namespace) -> dict:
+    code = _REQUEST_ERROR_CODES.get(str(exc))
+    run_id = getattr(args, "run_id", None)
+    if code is None and run_id is not None and not _is_canonical_run_id(run_id):
+        code = "invalid_run_id"
+    if code is None and getattr(args, "brief", None) is not None and not args.brief.strip():
+        code = "invalid_brief"
+    if code is None:
+        return {"error": INVALID_REQUEST_CATEGORY}
+    return {"error": code, "category": INVALID_REQUEST_CATEGORY}
+
+
+def _storage_error(exc: OSError) -> dict:
+    if isinstance(exc, (NotADirectoryError, FileExistsError)):
+        return {"error": "state_dir_not_directory", "category": "checkpoint_unavailable"}
+    if isinstance(exc, FileNotFoundError):
+        return {"error": "checkpoint_not_found", "category": "checkpoint_unavailable"}
+    return {"error": "checkpoint_unavailable"}
 
 
 def _reject_nonfinite(_value: str):
@@ -134,17 +178,13 @@ def main() -> int:
         StudyCreationUnavailableError,
         StudyWriteError,
     ) as exc:
-        print(json.dumps({"error": exc.code}))
-        return 2
+        return _error({"error": exc.code})
     except StudyReadError as exc:
-        print(json.dumps({"error": exc.code}))
-        return 2
-    except ValueError:
-        print(json.dumps({"error": "invalid_request_or_checkpoint"}))
-        return 2
-    except OSError:
-        print(json.dumps({"error": "checkpoint_unavailable"}))
-        return 2
+        return _error({"error": exc.code})
+    except ValueError as exc:
+        return _error(_request_error(exc, args))
+    except OSError as exc:
+        return _error(_storage_error(exc))
     print(json.dumps(snapshot.model_dump(mode="json"), indent=2))
     return 0
 

@@ -126,6 +126,15 @@ storage paths and exception details. Malformed replay feedback can also return a
 saved failed snapshot; inspect `status` and `error` as well as MCP's tool-error
 flag.
 
+The `terac-oracle` CLI exits with status 2 and writes one JSON error object to
+stderr. Where it can name the cause, it returns a specific `error` with the
+broader code in `category`: `invalid_brief`, `invalid_answer`,
+`no_pending_clarification`, `parent_required` and `invalid_run_id` belong to
+`invalid_request_or_checkpoint`; `checkpoint_not_found` and
+`state_dir_not_directory` belong to `checkpoint_unavailable`. Other errors keep
+the single `error` code above. Callers that match the broader code should read
+`category` when present and fall back to `error`.
+
 ## Own one state directory with one process
 
 Oracle calls are serialized within a server process. This is not a multi-process
