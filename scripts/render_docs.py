@@ -24,6 +24,7 @@ PAGES = {
     "docs/architecture.md": "docs/architecture.html",
     "docs/recipes/index.md": "docs/recipes/index.html",
     "docs/recipes/oracle.md": "docs/recipes/oracle.html",
+    "docs/recipes/owner_verification.md": "docs/recipes/owner_verification.html",
     "CONTRIBUTING.md": "docs/contributing.html",
 }
 OPTIONAL_PAGES = {

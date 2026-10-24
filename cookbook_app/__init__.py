@@ -11,6 +11,9 @@ from recipes.oracle import Oracle
 from recipes.oracle.binding import OracleRecipeService
 from recipes.oracle.live_contract import OracleLiveBinding, load_oracle_live_binding
 from recipes.oracle.mcp import OracleMCPBinding
+from recipes.owner_verification import OwnerVerification
+from recipes.owner_verification.binding import OwnerVerificationRecipeService
+from recipes.owner_verification.mcp import OwnerVerificationMCPBinding
 
 
 def create_default_server(
@@ -21,7 +24,7 @@ def create_default_server(
     credential_provider=None,
     live_transport_factory=None,
 ) -> CookbookMCP:
-    """Compose the first product recipe outside the generic MCP adapter."""
+    """Compose the product recipes outside the generic MCP adapter."""
     service = OracleRecipeService(
         Oracle(
             state_dir,
@@ -32,8 +35,10 @@ def create_default_server(
         )
     )
     return create_server(
-        catalog=RecipeCatalog((service,)),
-        bindings=(OracleMCPBinding(),),
+        catalog=RecipeCatalog(
+            (service, OwnerVerificationRecipeService(OwnerVerification(state_dir)))
+        ),
+        bindings=(OracleMCPBinding(), OwnerVerificationMCPBinding()),
     )
 
 

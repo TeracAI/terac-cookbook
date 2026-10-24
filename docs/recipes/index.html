@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../assets/site.css">
 </head>
 <body>
-<!-- source: docs/recipes/index.md; source-sha256: 683a070dfdcb7dbf3c0be85692b66c243ddafee91f2f22e009de82194bc1b67d -->
+<!-- source: docs/recipes/index.md; source-sha256: 009244fc04cac22a9479a57bd3fbdc13f9d161cbc1a93bb3831404dde74813c5 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -34,8 +34,8 @@
         <p class="eyebrow">Cookbook 0.2.0</p>
         <h1 id="recipes">Recipes</h1>
         <p class="lead">A Recipe is a runnable agent–expert workflow with understandable input, output,
-permitted effects and replay data. The catalog currently contains one implemented
-Recipe.</p>
+permitted effects and replay data. The catalog currently contains two implemented
+Recipes.</p>
       </header>
       <div class="content">
 <h2 id="oracle">Oracle</h2>
@@ -52,6 +52,21 @@ willingness to pay, and channel fit. The calling agent decides how to use it.</p
 <p><a href="oracle.html">Run Oracle</a> · <a href="../../recipes/oracle/review-contract.md">Read its feedback contract</a></p>
 <p>The three cases demonstrate workflow behavior. They do not evaluate arbitrary
 briefs, adapt to clarification answers or establish live expert judgment.</p>
+<h2 id="owner-verification">Owner verification</h2>
+<p><strong>Verify a small-business owner from a redacted call summary.</strong> A
+general-population reviewer reads a consented identity-and-intent call summary
+and returns <code>verified</code>, <code>concerns</code> or <code>fail</code> with reasons and red flags.</p>
+<ul>
+<li><strong>Identifier:</strong> <code>owner_verification</code></li>
+<li><strong>Available modes:</strong> synthetic offline replay only</li>
+<li><strong>Callers:</strong> Python, <code>terac-owner-verification</code>, and optional <a href="../mcp.html">local MCP</a></li>
+<li><strong>Input:</strong> a redacted call summary and an explicit recorded-consent flag</li>
+<li><strong>Output:</strong> an exact-summary verdict with reasons, red flags, three short answers and limitations</li>
+<li><strong>Cases:</strong> default <code>verified</code>, <code>concerns</code>, and <code>fail</code></li>
+</ul>
+<p><a href="owner_verification.html">Run owner verification</a> · <a href="../../recipes/owner_verification/verdict-contract.md">Read its verdict contract</a></p>
+<p>The cases demonstrate workflow behavior. They do not evaluate arbitrary
+summaries or establish anyone's identity.</p>
 <h2 id="add-a-useful-example">Add a useful example</h2>
 <p>Start with a developer's concrete input and desired output. Define the caller
 contract, waiting behavior, permitted effects and failures. Provide synthetic
@@ -67,6 +82,7 @@ registration; adding YAML does not create executable behavior. Follow the
 <div>
 <ul>
 <li><a href="#oracle">Oracle</a></li>
+<li><a href="#owner-verification">Owner verification</a></li>
 <li><a href="#add-a-useful-example">Add a useful example</a></li>
 </ul>
 </div>

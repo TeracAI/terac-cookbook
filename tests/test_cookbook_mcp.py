@@ -266,7 +266,7 @@ async def test_recipe_discovery_advertises_read_only_local_tool(tmp_path):
 
 
 @pytest.mark.anyio
-async def test_discovery_lists_only_oracle_and_has_no_state_or_credential_inputs(tmp_path):
+async def test_discovery_lists_product_recipes_and_has_no_state_or_credential_inputs(tmp_path):
     state_dir = tmp_path / "unused-state"
     async with cookbook_session(state_dir) as session:
         tools = (await session.list_tools()).tools
@@ -278,7 +278,14 @@ async def test_discovery_lists_only_oracle_and_has_no_state_or_credential_inputs
             )
         result, discovery = await call(session, "cookbook_list_recipes")
         assert result.isError is False
-        assert len(discovery["recipes"]) == 1
+        assert [recipe["id"] for recipe in discovery["recipes"]] == [
+            "oracle",
+            "owner_verification",
+        ]
+        owner = discovery["recipes"][1]
+        assert owner["modes"] == ["replay"] and owner["live_available"] is False
+        assert owner["default_replay_case"] == "verified"
+        assert {case["id"] for case in owner["replay_cases"]} == {"verified", "concerns", "fail"}
         oracle = discovery["recipes"][0]
         assert oracle["id"] == "oracle"
         assert oracle["name"] == "Oracle"
@@ -303,6 +310,9 @@ async def test_oracle_actions_preserve_waiting_clarification_and_delivery(tmp_pa
             "oracle_respond",
             "oracle_resume",
             "oracle_launch",
+            "owner_verification_start",
+            "owner_verification_inspect",
+            "owner_verification_resume",
         }
         result, started = await call(session, "oracle_start", {"brief": BRIEF})
         assert result.isError is False
@@ -691,3 +701,35 @@ def test_startup_rejects_relative_state_directory_before_creating_state():
     assert "--state-dir must be absolute" in result.stderr
     assert not result.stdout
     assert not (ROOT / "relative-state").exists()
+
+
+@pytest.mark.anyio
+async def test_owner_verification_over_stdio_with_recipe_errors(tmp_path):
+    summary = "Synthetic owner call summary for a fictional landscaping business"
+    async with cookbook_session(tmp_path) as session:
+        result, error = await call(
+            session, "owner_verification_start", {"summary": summary, "consent_recorded": False}
+        )
+        assert result.isError is True and error == {"error": "consent_required"}
+        result, error = await call(
+            session,
+            "owner_verification_start",
+            {"summary": "email a@example.com", "consent_recorded": True},
+        )
+        assert result.isError is True and error == {"error": "unredacted_input"}
+        result, started = await call(
+            session,
+            "owner_verification_start",
+            {"summary": summary, "consent_recorded": True, "replay_case": "concerns"},
+        )
+        assert result.isError is False and started["status"] == "working"
+        _, inspected = await call(
+            session, "owner_verification_inspect", {"run_id": started["run_id"]}
+        )
+        assert inspected == started
+        _, delivered = await call(
+            session, "owner_verification_resume", {"run_id": started["run_id"]}
+        )
+        assert delivered["result"]["verdict"] == "concerns"
+        result, error = await call(session, "oracle_inspect", {"run_id": started["run_id"]})
+        assert result.isError is True and error == {"error": "checkpoint_incompatible"}

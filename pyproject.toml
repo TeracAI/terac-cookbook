@@ -9,6 +9,7 @@ dependencies = ["pydantic>=2.12,<3"]
 
 [project.scripts]
 terac-oracle = "recipes.oracle.__main__:main"
+terac-owner-verification = "recipes.owner_verification.__main__:main"
 terac-cookbook-mcp = "cookbook_app:main"
 
 [project.optional-dependencies]

@@ -55,16 +55,29 @@ async def smoke_mcp(python: Path, work: Path, environment: dict[str, str]) -> No
             "oracle_respond",
             "oracle_resume",
             "oracle_launch",
+            "owner_verification_start",
+            "owner_verification_inspect",
+            "owner_verification_resume",
         }
         catalog_result = await client.call_tool("cookbook_list_recipes", {})
         assert catalog_result.isError is False
         assert len(catalog_result.content) == 1 and catalog_result.content[0].type == "text"
         recipes = json.loads(catalog_result.content[0].text)["recipes"]
-        assert len(recipes) == 1
+        assert [recipe["id"] for recipe in recipes] == ["oracle", "owner_verification"]
+        assert recipes[1]["default_replay_case"] == "verified"
         assert recipes[0]["id"] == "oracle" and recipes[0]["name"] == "Oracle"
         assert recipes[0]["modes"] == ["replay"] and recipes[0]["live_available"] is False
         assert recipes[0]["default_replay_case"] == "inconclusive"
         assert not state.exists()
+
+        owner = await oracle_call(
+            client,
+            "owner_verification_start",
+            {"summary": "Synthetic owner call summary", "consent_recorded": True},
+        )
+        owner = await oracle_call(client, "owner_verification_resume", {"run_id": owner["run_id"]})
+        assert owner["result"]["verdict"] == "verified"
+        (state / f"{owner['run_id']}.json").unlink()
 
         brief = "Fictional caf\u00e9 \U0001f469\U0001f3fd\u200d\U0001f527 launch brief"
         started = await oracle_call(client, "oracle_start", {"brief": brief})
@@ -273,6 +286,46 @@ def main() -> int:
         assert call("resume", linked["run_id"])["feedback"]["recommendation"] == "pass"
         assert call("inspect", parent["run_id"]) == parent
         print("Installed CLI: fresh linked follow-up passed; prior feedback preserved")
+        owner_cli = installed / (
+            "Scripts/terac-owner-verification.exe"
+            if os.name == "nt"
+            else "bin/terac-owner-verification"
+        )
+        owner_state = work / "owner runs"
+        for case in ("verified", "concerns", "fail"):
+            result = subprocess.run(
+                [
+                    str(owner_cli),
+                    "--state-dir",
+                    str(owner_state),
+                    "start",
+                    "--consent-recorded",
+                    "--replay-case",
+                    case,
+                    "--summary",
+                    "Synthetic owner call summary for a fictional landscaping business",
+                ],
+                cwd=work,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=20,
+            )
+            run_id = json.loads(result.stdout)["run_id"]
+            result = subprocess.run(
+                [str(owner_cli), "--state-dir", str(owner_state), "resume", run_id],
+                cwd=work,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=20,
+            )
+            delivered = json.loads(result.stdout)
+            assert delivered["status"] == "succeeded"
+            assert delivered["result"]["verdict"] == case
+        print("Installed CLI: owner verification replay delivered all three verdicts")
         if args.with_mcp:
             asyncio.run(smoke_mcp(python, work, environment))
     return 0

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Owner verification | Terac Cookbook</title>
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<!-- source: docs/recipes/owner_verification.md; source-sha256: d91bafa164f5f429b3888618dcc705a3d97910ef34f73e5cbbbc4065a7a8fb7a -->
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="../index.html">
+      <img class="brand-mark" src="../assets/terac-icon.svg" width="24" height="24" alt="">Terac Cookbook
+    </a>
+    <nav class="site-nav" aria-label="Main navigation">
+        <a href="../index.html">Home</a>
+        <a href="../setup.html">Setup</a>
+        <a href="../testing.html">Testing</a>
+        <a href="../architecture.html">Architecture</a>
+        <a href="../walkthrough.html">Walkthrough</a>
+        <a href="index.html">Recipes</a>
+        <a href="../contributing.html">Contributing</a>
+        <a href="../mcp.html">MCP</a>
+        <a href="../terac-access.html">Terac access</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="page-shell">
+  <div class="page-layout">
+    <article>
+      <header class="page-header">
+        <p class="eyebrow">Cookbook 0.2.0</p>
+        <h1 id="owner-verification">Owner verification</h1>
+        <p class="lead"><strong>Check that a small-business owner is credible before going further.</strong> A
+general-population reviewer reads a redacted, consented summary of an
+identity-and-intent call and returns a structured verdict. The calling agent
+decides what to do with it.</p>
+      </header>
+      <div class="content">
+<p>The implemented example is a fictional landscaping business owner considering a
+sale. Its replay is synthetic and scripted. It needs no account, network call or
+expert spend. Live study creation and verdict retrieval are unavailable.</p>
+<h2 id="input-and-result">Input and result</h2>
+<p>Pass <code>start</code> a nonempty <code>summary</code> (at most 8,000 characters) and
+<code>consent_recorded: true</code>. The summary must already be redacted; text containing
+an email address or phone number is rejected with <code>unredacted_input</code>, and a
+missing consent flag is rejected with <code>consent_required</code>. Other identifiers,
+such as names or addresses, remain the caller's responsibility.</p>
+<p>Every snapshot returns <code>run_id</code>, <code>mode</code>, <code>replay_case</code>, <code>artifact_id</code>,
+<code>summary</code>, <code>status</code>, <code>phase</code>, <code>result</code> and <code>error</code>. The exact summary text
+determines <code>artifact_id</code>.</p>
+<p><code>result</code> carries <code>verdict</code> (<code>verified</code>, <code>concerns</code> or <code>fail</code>), <code>reasons</code>,
+<code>red_flags</code>, short <code>answers</code> to <em>credible owner</em>, <em>business operating</em> and
+<em>genuine intent</em>, <code>limitations</code> and <code>provenance: "synthetic"</code>. The
+<a href="../../recipes/owner_verification/verdict-contract.md">verdict contract</a>
+defines each field.</p>
+<h2 id="run-the-default-case">Run the default case</h2>
+<p>From a checkout installed with <code>uv sync --locked</code>, run:</p>
+<pre><code class="language-sh">uv run --no-sync terac-owner-verification start --consent-recorded --summary &quot;Synthetic call: owner of a fictional 12-person landscaping business describes crews, equipment and a two-year succession plan.&quot;
+</code></pre>
+<p>Copy the returned <code>run_id</code> and replace <code>RUN_ID</code> below. State is stored in
+<code>.tmp/owner_verification</code> by default.</p>
+<pre><code class="language-sh">uv run --no-sync terac-owner-verification inspect RUN_ID
+uv run --no-sync terac-owner-verification resume RUN_ID
+uv run --no-sync terac-owner-verification inspect RUN_ID
+</code></pre>
+<p>Expected sequence:</p>
+<ol>
+<li><code>start</code> saves a <code>working</code> run in phase <code>waiting_for_reviewer</code>.</li>
+<li><code>inspect</code> reads it without advancing.</li>
+<li><code>resume</code> releases the synthetic verdict: <code>succeeded</code>, phase
+   <code>verdict_available</code>, <code>result.verdict</code> is <code>verified</code>.</li>
+<li>Later <code>inspect</code> and <code>resume</code> calls return the same saved verdict.</li>
+</ol>
+<p>Select <code>--replay-case concerns</code> or <code>--replay-case fail</code> for the other outcomes.
+Over <a href="../mcp.html">local MCP</a> the same actions are <code>owner_verification_start</code>,
+<code>owner_verification_inspect</code> and <code>owner_verification_resume</code>.</p>
+<h2 id="effects-and-limitations">Effects and limitations</h2>
+<p>Replay makes no network call and has no provider effects. The packaged verdicts
+are fixed per case and do not evaluate the supplied summary. There is no
+clarification step.</p>
+<p>A live version would publish a short task (for example about ten minutes, one
+reviewer, manual approval before payment) whose task URL points at the caller's
+own access-controlled review page, such as
+<code>https://reviews.example.com/review?case=&lt;case-id&gt;&amp;token=&lt;token&gt;</code>. That flow is
+not implemented here. A verdict is advice; it does not authorize contact,
+disclosure, payment, rejection or a transaction, and it is not identity proof.</p>
+      </div>
+    </article>
+    <nav class="toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+<div>
+<ul>
+<li><a href="#input-and-result">Input and result</a></li>
+<li><a href="#run-the-default-case">Run the default case</a></li>
+<li><a href="#effects-and-limitations">Effects and limitations</a></li>
+</ul>
+</div>
+    </nav>
+  </div>
+</main>
+<footer class="site-footer">
+  <p>Terac Cookbook 0.2.0 · Local, offline reading view.</p>
+  <p class="source-note">Markdown is canonical. <a href="owner_verification.md">Read the source</a>.</p>
+</footer>
+</body>
+</html>

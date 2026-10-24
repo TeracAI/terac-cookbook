@@ -1,0 +1,79 @@
+{
+  "recipe_contract_version": 1,
+  "fixture_version": 1,
+  "default_case": "verified",
+  "cases": {
+    "verified": {
+      "label": "Verified",
+      "summary": "A consistent, consented owner account with no red flags.",
+      "events": [
+        {
+          "kind": "verdict",
+          "result": {
+            "artifact_id": "$artifact_id",
+            "verdict": "verified",
+            "reasons": [
+              "Synthetic example: the owner describes daily operations, crew size and equipment consistently.",
+              "Consent was recorded before any identity or intent questions."
+            ],
+            "red_flags": [],
+            "answers": {
+              "credible_owner": "Yes; the account of hiring, scheduling and pricing is specific and consistent.",
+              "business_operating": "Yes; recent jobs and seasonal workload are described.",
+              "genuine_intent": "Yes; a succession timeline and reasons for selling are stated."
+            },
+            "limitations": ["Scripted replay; no real person or business was reviewed."],
+            "provenance": "synthetic"
+          }
+        }
+      ]
+    },
+    "concerns": {
+      "label": "Concerns",
+      "summary": "Plausible owner account with gaps that need follow-up before relying on it.",
+      "events": [
+        {
+          "kind": "verdict",
+          "result": {
+            "artifact_id": "$artifact_id",
+            "verdict": "concerns",
+            "reasons": ["Synthetic example: operations are described plausibly, but ownership share is vague."],
+            "red_flags": ["Speaker is unsure whether they hold majority ownership."],
+            "answers": {
+              "credible_owner": "Unclear; may be a minority partner or manager.",
+              "business_operating": "Yes; current jobs are described.",
+              "genuine_intent": "Partly; selling depends on a partner who was not on the call."
+            },
+            "limitations": ["Scripted replay; no real person or business was reviewed."],
+            "provenance": "synthetic"
+          }
+        }
+      ]
+    },
+    "fail": {
+      "label": "Fail",
+      "summary": "Material contradictions indicate the speaker is not a credible operating owner.",
+      "events": [
+        {
+          "kind": "verdict",
+          "result": {
+            "artifact_id": "$artifact_id",
+            "verdict": "fail",
+            "reasons": ["Synthetic example: the stated crew size and annual job count contradict each other twice."],
+            "red_flags": [
+              "Cannot name the equipment the business owns.",
+              "Asks for an upfront fee before sharing any business details."
+            ],
+            "answers": {
+              "credible_owner": "No",
+              "business_operating": "Unclear",
+              "genuine_intent": "No; the call focuses on fees rather than a sale."
+            },
+            "limitations": ["Scripted replay; no real person or business was reviewed."],
+            "provenance": "synthetic"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,8 +1,8 @@
 # Recipes
 
 A Recipe is a runnable agent–expert workflow with understandable input, output,
-permitted effects and replay data. The catalog currently contains one implemented
-Recipe.
+permitted effects and replay data. The catalog currently contains two implemented
+Recipes.
 
 ## Oracle
 
@@ -20,6 +20,24 @@ willingness to pay, and channel fit. The calling agent decides how to use it.
 
 The three cases demonstrate workflow behavior. They do not evaluate arbitrary
 briefs, adapt to clarification answers or establish live expert judgment.
+
+## Owner verification
+
+**Verify a small-business owner from a redacted call summary.** A
+general-population reviewer reads a consented identity-and-intent call summary
+and returns `verified`, `concerns` or `fail` with reasons and red flags.
+
+- **Identifier:** `owner_verification`
+- **Available modes:** synthetic offline replay only
+- **Callers:** Python, `terac-owner-verification`, and optional [local MCP](../mcp.md)
+- **Input:** a redacted call summary and an explicit recorded-consent flag
+- **Output:** an exact-summary verdict with reasons, red flags, three short answers and limitations
+- **Cases:** default `verified`, `concerns`, and `fail`
+
+[Run owner verification](owner_verification.md) · [Read its verdict contract](../../recipes/owner_verification/verdict-contract.md)
+
+The cases demonstrate workflow behavior. They do not evaluate arbitrary
+summaries or establish anyone's identity.
 
 ## Add a useful example
 

@@ -27,6 +27,7 @@ class RenderDocsTests(unittest.TestCase):
         self.write("docs/architecture.md", "# Architecture\n\n## Runner\n\nLocal replay.\n")
         self.write("docs/recipes/index.md", "# Recipes\n\n[Oracle](oracle.md)\n")
         self.write("docs/recipes/oracle.md", "# Oracle\n\n## Run\n\nReplay.\n")
+        self.write("docs/recipes/owner_verification.md", "# Owner verification\n\nReplay.\n")
         self.write("docs/walkthrough.md", "# Walkthrough\n\nLocal replay.\n")
         self.write("CONTRIBUTING.md", "# Contributing\n\n## Workflow\n\nReview changes.\n")
 
