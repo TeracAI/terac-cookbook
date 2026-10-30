@@ -1,4 +1,4 @@
-﻿# Expert-report ingestion: proposed first increment
+# Expert-report ingestion: proposed first increment
 
 Status: draft design, 30 October 2026. This page proposes a follow-up to the
 released study-creation and observation workflow. It does not add an installed
@@ -9,7 +9,8 @@ recipe action or claim that Cookbook retrieves expert reports today.
 Connect one existing Oracle run to one actual expert report, preserving the
 study, task and exact reviewed-brief association. Keep the raw report and its
 source evidence distinct from any normalized Oracle feedback. The first
-increment should accept one bounded UTF-8 text or Markdown report; additional
+increment should preserve one bounded provider report, including inline JSON,
+UTF-8 text or Markdown when returned. A document download is optional; additional
 formats and aggregation can follow concrete use cases.
 
 Reuse the Terac study lifecycle for study preparation, pricing, explicit launch
@@ -55,6 +56,21 @@ Never infer report contents from completion counts, approval, payment or an
 unknown response field. Participant profiles and screener answers are different
 artifacts from the requested expert report.
 
+## Authenticated verification on 30 October
+
+A read-only check of an existing active review study inspected both MCP
+`structuredContent` and every text/content block. There were no awaiting-review
+or approved submissions. The one rejected submission still had a pending
+file-upload task. Its text block duplicated the structured JSON; neither
+contained report text, an attachment nor a resource block.
+
+This sample contains no completed expert work, so it does not establish the
+completed-output transport. It also does not show that Terac cannot deliver
+reports. Inline JSON, text or Markdown is sufficient if it contains the actual
+task output and its association can be verified; a document download is not
+required. The next integration evidence must come from a suitable completed
+submission or a provider-supported completed-response example. No study was
+created, changed, launched or paid for during this verification.
 ## Proposed caller behavior
 
 Keep the existing [Oracle caller](../recipes/oracle.md) and its action meanings.
