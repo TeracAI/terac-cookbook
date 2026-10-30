@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="../assets/site.css">
 </head>
 <body>
-<!-- source: docs/recipes/oracle.md; source-sha256: 1ddd0f06256be3ec8ebcbf43821497b55a968965cae0911c015d2eb8194cb027 -->
+<!-- source: docs/recipes/oracle.md; source-sha256: 1b3d3b027d26ee9b802fcf8bf70730598ab223dc3dc6fbdeebcf170a52f6b254 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -215,6 +215,13 @@ the local process. The initial action saves the request locally. Each explicit
 <code>resume</code> performs at most one bounded feasibility or draft step; a returned quote
 must match the exact task, audience and participant count before a draft can be
 prepared. The checkpoint pins the quote and draft readback.</p>
+<p>The participant-facing <code>study_request.description</code> is limited to 280 characters;
+longer values fail local validation before a provider call. This is separate
+from the feasibility quote's <code>task_description</code> and <code>panel_description</code>. Oracle
+requires and forwards an explicit country filter, but its current request does
+not accept <code>screening_questions</code> or <code>candidate_profile</code>; do not describe its
+audience as expertise-screened. <code>customer_screening_review</code> sets applicant
+review mode; it does not define screener questions.</p>
 <p>Every <code>auto_approve</code> task requires a syntactically valid HTTPS <code>task_url</code>. That
 syntax check does not verify callback capability; the operator-owned task page
 must implement Terac's documented completion callback.</p>
@@ -230,6 +237,15 @@ The <code>oracle_launch</code> MCP tool and <code>terac-oracle launch</code> CLI
 method. See <a href="../terac-access.html#oracle-study-creation-adapter">Terac access</a> for
 the local opt-in and country-filter snapshot provenance. This flow creates work;
 it does not retrieve or deliver expert reports.</p>
+<h2 id="implementation-and-caller-schemas">Implementation and caller schemas</h2>
+<p>The <a href="../../recipes/oracle/study_creation.py">Oracle study-creation contract</a>
+validates this recipe's request and required country filter. Shared provider
+request types, including the participant-description limit, are defined in the
+<a href="../../adapters/terac_study_contract.py">Terac study contract</a>. The
+<a href="../../recipes/oracle/mcp.py">Oracle MCP binding</a> defines the arguments exposed
+by <code>oracle_start</code>, <code>oracle_inspect</code>, <code>oracle_respond</code>, <code>oracle_resume</code> and
+<code>oracle_launch</code>; the <a href="../../recipes/oracle/__main__.py">CLI adapter</a> defines the
+<code>terac-oracle</code> actions, study-request file option and launch confirmation fields.</p>
       </div>
     </article>
     <nav class="toc" aria-label="On this page">
@@ -246,6 +262,7 @@ it does not retrieve or deliver expert reports.</p>
 <li><a href="#restart-and-updates">Restart and updates</a></li>
 <li><a href="#errors-and-effects">Errors and effects</a></li>
 <li><a href="#explicit-study-creation-and-launch">Explicit study creation and launch</a></li>
+<li><a href="#implementation-and-caller-schemas">Implementation and caller schemas</a></li>
 </ul>
 </div>
     </nav>
