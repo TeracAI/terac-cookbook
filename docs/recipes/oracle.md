@@ -218,6 +218,14 @@ the local process. The initial action saves the request locally. Each explicit
 must match the exact task, audience and participant count before a draft can be
 prepared. The checkpoint pins the quote and draft readback.
 
+The participant-facing `study_request.description` is limited to 280 characters;
+longer values fail local validation before a provider call. This is separate
+from the feasibility quote's `task_description` and `panel_description`. Oracle
+requires and forwards an explicit country filter, but its current request does
+not accept `screening_questions` or `candidate_profile`; do not describe its
+audience as expertise-screened. `customer_screening_review` sets applicant
+review mode; it does not define screener questions.
+
 Every `auto_approve` task requires a syntactically valid HTTPS `task_url`. That
 syntax check does not verify callback capability; the operator-owned task page
 must implement Terac's documented completion callback.
@@ -234,3 +242,14 @@ The `oracle_launch` MCP tool and `terac-oracle launch` CLI call the same recipe
 method. See [Terac access](../terac-access.md#oracle-study-creation-adapter) for
 the local opt-in and country-filter snapshot provenance. This flow creates work;
 it does not retrieve or deliver expert reports.
+
+## Implementation and caller schemas
+
+The [Oracle study-creation contract](../../recipes/oracle/study_creation.py)
+validates this recipe's request and required country filter. Shared provider
+request types, including the participant-description limit, are defined in the
+[Terac study contract](../../adapters/terac_study_contract.py). The
+[Oracle MCP binding](../../recipes/oracle/mcp.py) defines the arguments exposed
+by `oracle_start`, `oracle_inspect`, `oracle_respond`, `oracle_resume` and
+`oracle_launch`; the [CLI adapter](../../recipes/oracle/__main__.py) defines the
+`terac-oracle` actions, study-request file option and launch confirmation fields.
