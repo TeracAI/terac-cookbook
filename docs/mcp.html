@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/mcp.md; source-sha256: 5862c22fa772f86b53a7e967568d7b61c464a667332a473458f4d54d1e13eec7 -->
+<!-- source: docs/mcp.md; source-sha256: e75c03f8083ba1fcad6abd3c288a4afee976c84fa9369426d087d4302865769f -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -164,6 +164,22 @@ live snapshots include a safe <code>provider_observation</code> after a successf
 storage paths and exception details. Malformed replay feedback can also return a
 saved failed snapshot; inspect <code>status</code> and <code>error</code> as well as MCP's tool-error
 flag.</p>
+<p>For commands that pass argument parsing, the <code>terac-oracle</code> CLI reports runtime
+errors as one JSON object on stderr and exits with status 2. Where it can name
+the cause, <code>error</code> carries a specific code and <code>category</code> the broader code:
+<code>invalid_brief</code>, <code>invalid_answer</code>, <code>no_pending_clarification</code>, <code>parent_required</code>,
+<code>invalid_linked_intent</code> and <code>invalid_run_id</code> belong to
+<code>invalid_request_or_checkpoint</code>; <code>checkpoint_not_found</code> and
+<code>state_dir_not_directory</code> belong to <code>checkpoint_unavailable</code>. <code>parent_required</code>
+means <code>follow_up</code> or <code>new_query</code> omitted the parent; <code>invalid_linked_intent</code> means
+a parent was supplied with ordinary <code>review</code> intent. <code>invalid_run_id</code> identifies
+a malformed run or parent ID. Unclassified request-validation errors keep the
+single <code>invalid_request_or_checkpoint</code> error. Storage errors can instead return
+<code>checkpoint_unavailable</code>. Callers that match the broader code should read
+<code>category</code> when present and fall back to <code>error</code>.</p>
+<p>Argparse usage errors, such as a missing required argument, an unknown option or
+an invalid choice for <code>--intent</code>, also exit with status 2 but print usage
+diagnostics rather than JSON.</p>
 <h2 id="own-one-state-directory-with-one-process">Own one state directory with one process</h2>
 <p>Oracle calls are serialized within a server process. This is not a multi-process
 lock: do not run another server or CLI writer against that directory at the same

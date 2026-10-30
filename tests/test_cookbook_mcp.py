@@ -386,6 +386,19 @@ async def test_credentials_do_not_select_live_and_explicit_live_creates_no_run(t
         assert result.isError is True
         assert error == {"error": "live_unavailable"}
         assert not list(tmp_path.iterdir())
+        result, error = await call(
+            session,
+            "oracle_start",
+            {
+                "brief": BRIEF,
+                "mode": "live",
+                "parent_id": "not-a-uuid",
+                "intent": "follow_up",
+            },
+        )
+        assert result.isError is True
+        assert error == {"error": "live_unavailable"}
+        assert not list(tmp_path.iterdir())
         result, started = await call(session, "oracle_start", {"brief": BRIEF})
         assert result.isError is False
         assert started["mode"] == "replay"

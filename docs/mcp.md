@@ -126,6 +126,24 @@ storage paths and exception details. Malformed replay feedback can also return a
 saved failed snapshot; inspect `status` and `error` as well as MCP's tool-error
 flag.
 
+For commands that pass argument parsing, the `terac-oracle` CLI reports runtime
+errors as one JSON object on stderr and exits with status 2. Where it can name
+the cause, `error` carries a specific code and `category` the broader code:
+`invalid_brief`, `invalid_answer`, `no_pending_clarification`, `parent_required`,
+`invalid_linked_intent` and `invalid_run_id` belong to
+`invalid_request_or_checkpoint`; `checkpoint_not_found` and
+`state_dir_not_directory` belong to `checkpoint_unavailable`. `parent_required`
+means `follow_up` or `new_query` omitted the parent; `invalid_linked_intent` means
+a parent was supplied with ordinary `review` intent. `invalid_run_id` identifies
+a malformed run or parent ID. Unclassified request-validation errors keep the
+single `invalid_request_or_checkpoint` error. Storage errors can instead return
+`checkpoint_unavailable`. Callers that match the broader code should read
+`category` when present and fall back to `error`.
+
+Argparse usage errors, such as a missing required argument, an unknown option or
+an invalid choice for `--intent`, also exit with status 2 but print usage
+diagnostics rather than JSON.
+
 ## Own one state directory with one process
 
 Oracle calls are serialized within a server process. This is not a multi-process

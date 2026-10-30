@@ -15,7 +15,7 @@ from recipes.catalog import (
 )
 from recipes.oracle import Oracle
 from recipes.oracle.binding import OracleRecipeService
-from runtime.runner import CheckpointIncompatibleError, Runner, RunState
+from runtime.runner import CheckpointIncompatibleError, InvalidRunIDError, Runner, RunState
 
 
 @dataclass(frozen=True)
@@ -318,6 +318,7 @@ def test_transition_cannot_retarget_a_saved_run_identity(tmp_path):
 
 
 def test_recipe_composition_rejects_missing_or_duplicate_bindings(tmp_path):
+    pytest.importorskip("mcp")
     from adapters.cookbook_mcp import create_server
     from tests.recipe_mcp_fixture import SumMCPBinding
 
@@ -343,6 +344,7 @@ def test_recipe_composition_rejects_missing_or_duplicate_bindings(tmp_path):
 
 
 def test_cookbook_mcp_rejects_duplicate_tool_names(tmp_path):
+    pytest.importorskip("mcp")
     from adapters.cookbook_mcp import CookbookMCP
 
     server = CookbookMCP("test")
@@ -356,3 +358,18 @@ def test_cookbook_mcp_rejects_duplicate_tool_names(tmp_path):
     server.add_tool(first_tool, name="same_tool")
     with pytest.raises(RecipeBindingError, match="(?i)duplicate tool"):
         server.add_tool(second_tool, name="same_tool")
+
+
+@pytest.mark.parametrize(
+    "run_id",
+    [None, "not-a-uuid", "../escape", "ABCDEFAB-CDEF-ABCD-EFAB-CDEFABCDEFAB"],
+)
+def test_runner_path_uses_typed_error_for_noncanonical_run_ids(tmp_path, run_id):
+    runner = SumRecipe(tmp_path)._runner
+
+    with pytest.raises(InvalidRunIDError) as error:
+        runner.path(run_id)
+
+    assert error.value.code == "invalid_run_id"
+    assert str(error.value) == "Expected a canonical run identity"
+    assert list(tmp_path.iterdir()) == []
