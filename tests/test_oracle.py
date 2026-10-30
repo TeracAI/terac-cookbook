@@ -2,7 +2,13 @@ import json
 
 import pytest
 
-from recipes.oracle import REVIEW_SCOPE, Oracle
+from recipes.oracle import (
+    REVIEW_SCOPE,
+    InvalidLinkedIntentError,
+    LiveIntegrationUnavailableError,
+    Oracle,
+    ParentRequiredError,
+)
 from runtime.runner import CheckpointIncompatibleError
 
 BRIEF = "Synthetic repair-shop appointment tool: buyer demand and pricing are unproven."
@@ -50,6 +56,53 @@ def test_default_start_is_replay_and_inspection_preserves_waiting(tmp_path, monk
     assert started.feedback is None
     assert oracle.inspect(started.run_id) == started
     assert Oracle(tmp_path).inspect(started.run_id) == started
+
+
+@pytest.mark.parametrize(
+    ("intent", "parent_id", "error_type", "error_code"),
+    [
+        ("follow_up", None, ParentRequiredError, "parent_required"),
+        (
+            "review",
+            "00000000-0000-4000-8000-000000000000",
+            InvalidLinkedIntentError,
+            "invalid_linked_intent",
+        ),
+    ],
+)
+def test_start_reports_typed_linked_intent_errors(
+    tmp_path, intent, parent_id, error_type, error_code
+):
+    with pytest.raises(error_type) as error:
+        Oracle(tmp_path).start(BRIEF, intent=intent, parent_id=parent_id)
+
+    assert error.value.code == error_code
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("intent", [[], {"unsupported": True}])
+def test_start_rejects_unhashable_intent_with_a_parent_as_value_error(tmp_path, intent):
+    with pytest.raises(ValueError, match="Unsupported Oracle intent"):
+        Oracle(tmp_path).start(
+            BRIEF,
+            parent_id="00000000-0000-4000-8000-000000000000",
+            intent=intent,
+        )
+
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_live_unavailable_precedes_malformed_parent_without_a_binding(tmp_path):
+    with pytest.raises(LiveIntegrationUnavailableError) as error:
+        Oracle(tmp_path).start(
+            BRIEF,
+            mode="live",
+            parent_id="not-a-uuid",
+            intent="follow_up",
+        )
+
+    assert error.value.code == "live_unavailable"
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_default_start_pins_the_inconclusive_fixture_across_restart(tmp_path):

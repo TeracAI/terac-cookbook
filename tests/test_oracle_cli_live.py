@@ -124,6 +124,29 @@ def test_cli_live_start_without_binding_reports_unavailable(tmp_path):
     assert not list(state_dir.glob("*.json"))
 
 
+def test_cli_live_unavailable_precedes_malformed_parent_without_binding(tmp_path):
+    state_dir = tmp_path / "state"
+
+    result = _run_cli(
+        state_dir,
+        None,
+        "start",
+        "--brief",
+        BRIEF,
+        "--mode",
+        "live",
+        "--parent-id",
+        "not-a-uuid",
+        "--intent",
+        "follow_up",
+    )
+
+    assert result.returncode == 2
+    assert json.loads(result.stderr) == {"error": "live_unavailable"}
+    assert result.stdout == ""
+    assert not list(state_dir.glob("*.json"))
+
+
 def test_cli_live_resume_without_credential_preserves_waiting_checkpoint(tmp_path):
     binding_path = tmp_path / "reviewed-binding.json"
     _write_binding(binding_path)

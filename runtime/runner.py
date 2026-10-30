@@ -24,6 +24,15 @@ class CheckpointIncompatibleError(ValueError):
         super().__init__("Checkpoint is incompatible with the installed recipe contract")
 
 
+class InvalidRunIDError(ValueError):
+    """A requested run identity is not in canonical UUID form."""
+
+    code = "invalid_run_id"
+
+    def __init__(self):
+        super().__init__("Expected a canonical run identity")
+
+
 class RunState(BaseModel):
     """Common identity and lifecycle around opaque recipe and adapter payloads."""
 
@@ -215,9 +224,13 @@ class Runner:
 
     def path(self, run_id: str) -> Path:
         if not isinstance(run_id, str):
-            raise ValueError("Expected a canonical run identity")
-        if str(UUID(run_id)) != run_id:
-            raise ValueError("Expected a canonical run identity")
+            raise InvalidRunIDError()
+        try:
+            canonical_id = str(UUID(run_id))
+        except ValueError as exc:
+            raise InvalidRunIDError() from exc
+        if canonical_id != run_id:
+            raise InvalidRunIDError()
         return self.state_dir / f"{run_id}.json"
 
     def save(self, state: RunState) -> None:

@@ -87,6 +87,20 @@ class StudyCreationUnavailableError(ValueError):
         super().__init__("Oracle study creation is unavailable")
 
 
+class ParentRequiredError(ValueError):
+    code = "parent_required"
+
+    def __init__(self):
+        super().__init__("Linked start requires a parent and follow_up/new_query intent")
+
+
+class InvalidLinkedIntentError(ValueError):
+    code = "invalid_linked_intent"
+
+    def __init__(self):
+        super().__init__("Linked start requires a parent and follow_up/new_query intent")
+
+
 @dataclass(frozen=True)
 class _ReplayCase:
     case_id: str
@@ -462,6 +476,12 @@ class Oracle:
         replay_case: str | None = None,
         study_request: object | None = None,
     ) -> Snapshot:
+        if (
+            parent_id is not None
+            and mode == "replay"
+            and (not isinstance(intent, str) or intent not in {"follow_up", "new_query"})
+        ):
+            self._runner.path(parent_id)
         if mode == "live":
             if study_request is not None:
                 if self._study_adapter is None:
@@ -623,8 +643,10 @@ class Oracle:
     def _validate_intent(intent: str, parent_id: str | None) -> None:
         if not isinstance(intent, str) or intent not in {"review", "follow_up", "new_query"}:
             raise ValueError("Unsupported Oracle intent")
-        if (intent == "review") != (parent_id is None):
-            raise ValueError("Linked start requires a parent and follow_up/new_query intent")
+        if intent == "review" and parent_id is not None:
+            raise InvalidLinkedIntentError()
+        if intent in {"follow_up", "new_query"} and parent_id is None:
+            raise ParentRequiredError()
 
     @staticmethod
     def _validate_run(state: RunState) -> None:
