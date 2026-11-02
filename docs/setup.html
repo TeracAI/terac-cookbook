@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: docs/setup.md; source-sha256: ed3f162a18b101aeaeb5a6a33606a2501ff916d998635ac844e41f69cff8bf70 -->
+<!-- source: docs/setup.md; source-sha256: d14dc4d64c3accf203eac821dc8c73669c7928d04dc7a66d4d40c0029843893c -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -79,6 +79,13 @@ Only SDK-level stdio checks are recorded in this repository; native registration
 and end-to-end acceptance in Codex, Claude Code, Hermes or another host remain
 unverified. The <a href="mcp.html#read-the-per-tool-result-format">per-tool result formats</a>
 also matter because discovery and Oracle actions return different shapes.</p>
+<h2 id="use-the-checkout-skills">Use the checkout skills</h2>
+<p>The checkout includes three optional <a href="agent-skills.html">agent skills</a>:
+<code>terac-cookbook</code>, <code>recipe-creation</code> and <code>study-operations</code>. Supply the selected
+<code>SKILL.md</code> and linked documentation through your host's supported discovery or
+import mechanism. The wheel contains neither these instructions nor the docs;
+the source distribution includes docs but excludes <code>.agents/skills</code>. Installing
+the Python package does not register skills or MCP with a host.</p>
 <h2 id="update-a-checkout">Update a checkout</h2>
 <p>Choose the reviewed Git revision explicitly, fast-forward the checkout to it,
 then run <code>uv sync --locked</code> again. Include <code>--extra connectors</code> when using the
@@ -97,6 +104,7 @@ publication. See the <a href="../pyproject.toml">package metadata</a>.</p>
 <li><a href="#install-from-a-checkout">Install from a checkout</a></li>
 <li><a href="#connect-a-local-mcp-client">Connect a local MCP client</a></li>
 <li><a href="#register-with-a-native-host">Register with a native host</a></li>
+<li><a href="#use-the-checkout-skills">Use the checkout skills</a></li>
 <li><a href="#update-a-checkout">Update a checkout</a></li>
 </ul>
 </div>

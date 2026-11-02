@@ -59,6 +59,15 @@ and end-to-end acceptance in Codex, Claude Code, Hermes or another host remain
 unverified. The [per-tool result formats](mcp.md#read-the-per-tool-result-format)
 also matter because discovery and Oracle actions return different shapes.
 
+## Use the checkout skills
+
+The checkout includes three optional [agent skills](agent-skills.md):
+`terac-cookbook`, `recipe-creation` and `study-operations`. Supply the selected
+`SKILL.md` and linked documentation through your host's supported discovery or
+import mechanism. The wheel contains neither these instructions nor the docs;
+the source distribution includes docs but excludes `.agents/skills`. Installing
+the Python package does not register skills or MCP with a host.
+
 ## Update a checkout
 
 Choose the reviewed Git revision explicitly, fast-forward the checkout to it,

@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/site.css">
 </head>
 <body>
-<!-- source: CONTRIBUTING.md; source-sha256: b5256f60357e7f39685caefa1019f06290a8c17c24e3803eb92e780b8b3e25d0 -->
+<!-- source: CONTRIBUTING.md; source-sha256: 55c9613ae2d6f4373d86940697c8598f513170e275e04dfed06c03cc348b3924 -->
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="header-inner">
@@ -131,10 +131,13 @@ the final revision. Passing CI establishes the checks that ran; required checks,
 review rules and merge permissions are separate repository settings. Review and
 local acceptance do not establish live-provider conformance.</p>
 <h2 id="optional-agent-guidance">Optional agent guidance</h2>
-<p>The repository includes optional <code>recipe-creation</code> and <code>terac-cookbook</code> skills
-under <code>.agents/skills/</code>. They point back to the canonical contribution and caller
-contracts. Use them only through a host that supports their format; this does not
-establish automatic discovery or application-client compatibility.</p>
+<p>The repository includes three optional <a href="agent-skills.html">agent skills</a> under
+<code>.agents/skills/</code>: <code>recipe-creation</code> for implementation, <code>terac-cookbook</code> for
+recipe use and <code>study-operations</code> for study planning and progress explanation.
+They point back to the canonical contribution and caller contracts. Supply the
+checkout instructions through a host that supports their format; wheel
+installation and MCP registration do not establish skill discovery or
+application-client compatibility.</p>
       </div>
     </article>
     <nav class="toc" aria-label="On this page">

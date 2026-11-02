@@ -131,9 +131,12 @@ then use its supported actions. Oracle exposes `oracle_start`, `oracle_inspect`,
 `oracle_launch`. There is no assumed universal recipe-start tool or executable
 YAML dispatcher.
 
-The [Cookbook agent skill](.agents/skills/terac-cookbook/SKILL.md) routes discovery
-and shared workflow to recipe-local guidance. It is checkout guidance, not a
-claim that every package installation or MCP host installs skills automatically.
+The checkout provides three [agent skills](docs/agent-skills.md):
+[terac-cookbook](.agents/skills/terac-cookbook/SKILL.md) for recipe use,
+[recipe-creation](.agents/skills/recipe-creation/SKILL.md) for contributions, and
+[study-operations](.agents/skills/study-operations/SKILL.md) for study planning and
+progress explanation. They supply guidance; package installation and MCP host
+registration do not automatically install or discover them.
 
 ## Build a recipe
 

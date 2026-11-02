@@ -120,7 +120,10 @@ local acceptance do not establish live-provider conformance.
 
 ## Optional agent guidance
 
-The repository includes optional `recipe-creation` and `terac-cookbook` skills
-under `.agents/skills/`. They point back to the canonical contribution and caller
-contracts. Use them only through a host that supports their format; this does not
-establish automatic discovery or application-client compatibility.
+The repository includes three optional [agent skills](docs/agent-skills.md) under
+`.agents/skills/`: `recipe-creation` for implementation, `terac-cookbook` for
+recipe use and `study-operations` for study planning and progress explanation.
+They point back to the canonical contribution and caller contracts. Supply the
+checkout instructions through a host that supports their format; wheel
+installation and MCP registration do not establish skill discovery or
+application-client compatibility.
