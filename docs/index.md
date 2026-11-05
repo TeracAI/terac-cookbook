@@ -23,6 +23,9 @@ locally to understand the complete workflow without an account or expert spend.
   the Runner, replay and checkpoints fit together, with the current delivery scope.
 - **Browse the catalog:** [Recipes](recipes/index.md) lists implemented examples
   and their available modes.
+- **Choose agent guidance:** [Agent skills](agent-skills.md) distinguishes recipe
+  use, recipe creation and [Study Operations](study-operations.md) planning and
+  progress explanation from runtime installation and host registration.
 - **Connect a local agent:** [Local MCP](mcp.md) exposes discovery and the same
   four replay actions and the separate launch tool through stdio.
 - **Add or improve an example:** [Contributing](../CONTRIBUTING.md) takes one

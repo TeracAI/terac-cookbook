@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent skills and package contents | Terac Cookbook</title>
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<!-- source: docs/agent-skills.md; source-sha256: 2630e71a373519efebe6ff9aa08497275c6fa0f0abcc0395161930e59cdc8384 -->
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="index.html">
+      <img class="brand-mark" src="assets/terac-icon.svg" width="24" height="24" alt="">Terac Cookbook
+    </a>
+    <nav class="site-nav" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="setup.html">Setup</a>
+        <a href="testing.html">Testing</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="walkthrough.html">Walkthrough</a>
+        <a href="recipes/index.html">Recipes</a>
+        <a href="contributing.html">Contributing</a>
+        <a href="mcp.html">MCP</a>
+        <a href="terac-access.html">Terac access</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="page-shell">
+  <div class="page-layout">
+    <article>
+      <header class="page-header">
+        <p class="eyebrow">Cookbook 0.2.0</p>
+        <h1 id="agent-skills-and-package-contents">Agent skills and package contents</h1>
+        <p class="lead">Skills guide an agent. Recipes implement workflows. The Python package supplies
+runtime and caller commands. These are different parts of a checkout, not
+interchangeable installation formats.</p>
+      </header>
+      <div class="content">
+<h2 id="choose-a-skill">Choose a skill</h2>
+<ul>
+<li><a href="../.agents/skills/terac-cookbook/SKILL.md">terac-cookbook</a>: discover and run an
+  implemented recipe through its supported Python, CLI or local MCP interface;
+  understand results, inspect saved state and reattach.</li>
+<li><a href="../.agents/skills/recipe-creation/SKILL.md">recipe-creation</a>: implement a recipe's
+  models, explicit registrations, fixtures, packaging and caller-level checks.
+  Proposal YAML is data intake, not an executable recipe or automatic registration.</li>
+<li><a href="../.agents/skills/study-operations/SKILL.md">study-operations</a>: plan a study or
+  explain observed recruitment/screening/review progress and propose a next step.
+  See its <a href="study-operations.html">operating guide</a>.</li>
+</ul>
+<p>For example, use terac-cookbook for Oracle replay, study-operations to understand
+an existing opportunity, and recipe-creation to contribute a different recipe.
+Skills supply neither missing provider endpoints nor permission to disclose,
+recruit, spend, publish, reject work or pay experts.</p>
+<h2 id="runtime-installation-and-instruction-discovery">Runtime installation and instruction discovery</h2>
+<p>From a reviewed checkout, <code>uv sync --locked</code> prepares the core runtime and default
+development dependencies. Add <code>--extra connectors</code> for optional local stdio MCP
+and its SDK tests; see <a href="setup.html">setup</a>. This does not register an MCP server
+with an agent host automatically.</p>
+<p>The Python package defines <code>terac-oracle</code> and <code>terac-cookbook-mcp</code>, dependencies
+and recipe fixtures in <a href="../pyproject.toml">pyproject.toml</a>. Its current wheel and
+source distribution do not contain <code>.agents/skills</code>. The wheel excludes the
+repository docs; the source distribution includes <code>docs/</code>. Installing a wheel
+therefore does not install these skill instructions or their linked guides. No
+package-registry publication is claimed here.</p>
+<p>Use a Git checkout to supply <code>.agents/skills/&lt;name&gt;/SKILL.md</code> and linked docs to
+the agent. Discovery/import is host-specific: use supported host configuration
+or explicitly ask the agent to read the selected file if it does not discover
+repository skills. Do not assume every agent uses Codex discovery or promise
+automatic skill availability to a wheel-only client.</p>
+<p>Native MCP tool calls also require host registration of the documented stdio
+command and private state directory. A manually started server expects MCP
+protocol input, not ordinary human commands. For terminal demonstrations, use
+the recipe CLI. See the <a href="mcp.html">local MCP guide</a> and
+<a href="setup.html#register-with-a-native-host">native host registration guidance</a>.</p>
+<h2 id="contribute-a-change">Contribute a change</h2>
+<p>Follow <a href="contributing.html">contributing</a> and the selected skill's concrete
+source/test links. A recipe directory or skill alone creates no callable tool.
+Registration, CLI/MCP behavior and packaged fixtures need checks and review.</p>
+<p>Keep credentials, local checkpoints and uncleared expert material outside Git.
+Use the contribution guide for offline checks and independent review.</p>
+      </div>
+    </article>
+    <nav class="toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+<div>
+<ul>
+<li><a href="#choose-a-skill">Choose a skill</a></li>
+<li><a href="#runtime-installation-and-instruction-discovery">Runtime installation and instruction discovery</a></li>
+<li><a href="#contribute-a-change">Contribute a change</a></li>
+</ul>
+</div>
+    </nav>
+  </div>
+</main>
+<footer class="site-footer">
+  <p>Terac Cookbook 0.2.0 · Local, offline reading view.</p>
+  <p class="source-note">Markdown is canonical. <a href="agent-skills.md">Read the source</a>.</p>
+</footer>
+</body>
+</html>

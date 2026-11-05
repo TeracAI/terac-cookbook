@@ -27,6 +27,8 @@ PAGES = {
     "CONTRIBUTING.md": "docs/contributing.html",
 }
 OPTIONAL_PAGES = {
+    "docs/agent-skills.md": "docs/agent-skills.html",
+    "docs/study-operations.md": "docs/study-operations.html",
     "docs/mcp.md": "docs/mcp.html",
     "docs/terac-access.md": "docs/terac-access.html",
     "docs/walkthrough.md": "docs/walkthrough.html",

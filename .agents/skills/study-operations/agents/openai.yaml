@@ -1,0 +1,4 @@
+interface:
+  display_name: "Study Operations"
+  short_description: "Plan studies and explain observed progress"
+  default_prompt: "Use $study-operations to explain this study's observed state and propose a next step without changing it."

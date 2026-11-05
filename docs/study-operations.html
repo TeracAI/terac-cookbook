@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Study Operations | Terac Cookbook</title>
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<!-- source: docs/study-operations.md; source-sha256: 6c2506c06d8f788684f01da91525c7de65280375324eaac6abf8a94a70bfe29e -->
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="index.html">
+      <img class="brand-mark" src="assets/terac-icon.svg" width="24" height="24" alt="">Terac Cookbook
+    </a>
+    <nav class="site-nav" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="setup.html">Setup</a>
+        <a href="testing.html">Testing</a>
+        <a href="architecture.html">Architecture</a>
+        <a href="walkthrough.html">Walkthrough</a>
+        <a href="recipes/index.html">Recipes</a>
+        <a href="contributing.html">Contributing</a>
+        <a href="mcp.html">MCP</a>
+        <a href="terac-access.html">Terac access</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="page-shell">
+  <div class="page-layout">
+    <article>
+      <header class="page-header">
+        <p class="eyebrow">Cookbook 0.2.0</p>
+        <h1 id="study-operations">Study Operations</h1>
+        <p class="lead">Study Operations is an agent skill for planning a Terac study and explaining
+observed progress. It supplies guidance, not a new recipe, server tool, polling
+process or advertising integration. Read the
+<a href="../.agents/skills/study-operations/SKILL.md">skill</a> and <a href="agent-skills.html">skills guide</a>.</p>
+      </header>
+      <div class="content">
+<h2 id="start-with-a-question">Start with a question</h2>
+<ul>
+<li><code>Use $study-operations to help plan a one-reviewer study; do not create or launch it.</code></li>
+<li><code>Explain the observed progress of opportunity OPPORTUNITY_ID and propose one next step. Do not change it.</code></li>
+<li><code>Explain these saved study observations; label them as a saved snapshot.</code></li>
+</ul>
+<p>Establish the goal; ask missing count and audience before draft creation, plus
+duration where the user owns an external task. Propose method, screener and other
+mechanics for confirmation instead of asking for every missing detail. The
+selected recipe's schema determines its inputs, not a universal study payload.</p>
+<h2 id="pricing-draft-creation-and-management">Pricing, draft creation and management</h2>
+<p>Read the skill's <a href="../.agents/skills/study-operations/references/study-lifecycle.md">lifecycle reference</a>
+for the verified end-to-end routes. Feasibility produces a Terac-confirmed CPI;
+it may be priced automatically or by a person, and the caller cannot choose or
+observe which. Draft-first creation without a feasibility ID returns a machine
+estimate. Neither route skips draft review and separate launch confirmation.
+Pending, priced, consumed and terminal requests have different next steps; match
+the priced brief and ID before attaching a quote. A draft is not recruitment.</p>
+<p>The reference maps supported draft edits, launch/pause/resume/stop, invitation
+queues, work review/payment and role-specific website gaps. It does not add these
+actions to Cookbook or authorize them. Current tool schemas own exact inputs.</p>
+<p>A recipe owns its business purpose and result. This skill owns guidance and
+explanation; it adds no shared study-lifecycle implementation. The existing
+Oracle study-creation workflow remains the implemented local route described in
+the <a href="recipes/oracle.html#explicit-study-creation-and-launch">Oracle guide</a>. Recipes
+do not need to call this skill as a parent workflow, and it adds no automatic
+recipe-composition framework.</p>
+<p>For a local recipe, follow <a href="../.agents/skills/terac-cookbook/SKILL.md">terac-cookbook</a>.
+For the hosted Terac connector, follow its context-first instructions and actual
+schemas. These are separate MCP connections. A credential does not select live
+mode or authorize effects.</p>
+<h2 id="evidence-the-agent-can-use">Evidence the agent can use</h2>
+<p>Use fields actually returned by the current provider interface: study status and
+target, task definitions, pricing and dashboard links; aggregate submission
+progress; a separate applicant invite queue; available screening/quota progress;
+and selected per-task progress where needed.</p>
+<p>Keep page coverage explicit. A partial list does not establish a total, and
+applicants still screening may be absent from submission reads. A branching
+screener's rejection rate concerns answers graded at that question, not everyone
+who saw an ad. Quota minimum, maximum and exact targets differ. Missing or stale
+values stay missing or stale; one snapshot cannot establish an ETA or trend.</p>
+<p>The skill permits a first pass of at most four reads: context, exact opportunity,
+one applicant page and one submission page. One selected-detail read may be added.
+Skip unnecessary calls and use up to 25 rows per page where supported. Further
+pages need another requested bounded pass. This is a skill policy, not a provider
+rate limit. There is no background watcher.</p>
+<h2 id="synthetic-example-active-but-no-report">Synthetic example: active but no report</h2>
+<p>This example is invented, not the current organization's state. Suppose the exact
+study has status active, target three, one submission in progress, zero awaiting
+review and zero approved. A complete separate applicant listing shows two people
+awaiting invitation. No ad-delivery metrics were supplied.</p>
+<p>Explain that recruitment is active, one person is working, and two applicants
+await invitation decisions. That queue alone does not establish qualification.
+Propose reviewing the queue and include a returned dashboard link if available;
+otherwise state that no link was supplied. Do not invite anyone
+automatically, infer ad reach or promise a delivery time.</p>
+<p>If a submission instead awaits review, explain that a customer decision is due.
+Do not approve/pay it merely to obtain a report. Task completion and approval
+counts are not report content. Native expert-report ingestion remains a separate
+unimplemented integration: it needs a supported content shape and task/brief
+association. Native upload and a caller-hosted collection page are distinct routes.</p>
+<h2 id="proposals-and-effects">Proposals and effects</h2>
+<p>This skill observes and proposes. It does not change targeting/pricing,
+launch/pause/stop recruitment, invite/decline applicants, approve/reject/pay work
+or manage ads. It adds none of those actions to the Cookbook MCP.</p>
+<p>Actual changes belong to separately requested, supported recipe/provider
+workflows under declared authority. Reuse authority already supplied for the same
+action/scope; do not invent it from credentials, a recommendation or website
+access. Definition, feasibility/quote, draft review and paid launch are separate.
+Slow progress does not justify creating a replacement study.</p>
+<p>Local run inspect is a pure saved-state read. Recipe resume advances that run
+within its mode. Terac opportunity resume restarts paused recruitment. Keep these
+identities and actions distinct.</p>
+<h2 id="panels-advertising-and-website-assistance">Panels, advertising and website assistance</h2>
+<p>The <a href="https://terac.com/docs/researchers/recruitment">recruitment guide</a> assigns
+sourcing-channel selection and pacing to Terac. Public
+<a href="https://terac.com/docs/developers/reference/getOpportunity">opportunity</a>,
+<a href="https://terac.com/docs/developers/reference/listApplicants">applicant</a> and
+<a href="https://terac.com/docs/developers/reference/listSubmissions">submission</a> reads
+provide operational progress. The reviewed public interface does not expose Meta
+campaign controls, impressions, reach, clicks or channel spend.</p>
+<p>Some authenticated internal roles expose an Ads Manager with creative review and
+publication controls; these are not promised to normal customer accounts or the
+public MCP. Configured daily/lifetime caps and a Review label prove neither a
+live campaign nor spend. Verify publication, delivery and freshness separately.
+Dashboard features are not proof of an API or permission to operate campaigns.
+Ask the Terac contact for missing metrics or
+give a returned dashboard link. Optional computer use can assist an explicitly
+requested dashboard task when supported by the host; read that host's relevant
+skill first. It grants no extra editing, recruiting, advertising or payment
+authority. Minimize participant data in summaries and keep it out of Git.</p>
+<h2 id="repository-packaging">Repository packaging</h2>
+<p>The skill is repository instruction material. It installs no transport or tool.
+The current Python wheel and source distribution do not include <code>.agents/skills</code>;
+use a checkout for these instructions. See <a href="agent-skills.html">discovery and package contents</a>.
+A later saved/replayable operations-brief recipe may be useful, but this change
+does not implement or register one.</p>
+      </div>
+    </article>
+    <nav class="toc" aria-label="On this page">
+      <p class="toc-title">On this page</p>
+<div>
+<ul>
+<li><a href="#start-with-a-question">Start with a question</a></li>
+<li><a href="#pricing-draft-creation-and-management">Pricing, draft creation and management</a></li>
+<li><a href="#evidence-the-agent-can-use">Evidence the agent can use</a></li>
+<li><a href="#synthetic-example-active-but-no-report">Synthetic example: active but no report</a></li>
+<li><a href="#proposals-and-effects">Proposals and effects</a></li>
+<li><a href="#panels-advertising-and-website-assistance">Panels, advertising and website assistance</a></li>
+<li><a href="#repository-packaging">Repository packaging</a></li>
+</ul>
+</div>
+    </nav>
+  </div>
+</main>
+<footer class="site-footer">
+  <p>Terac Cookbook 0.2.0 · Local, offline reading view.</p>
+  <p class="source-note">Markdown is canonical. <a href="study-operations.md">Read the source</a>.</p>
+</footer>
+</body>
+</html>
